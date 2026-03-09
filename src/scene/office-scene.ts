@@ -185,7 +185,9 @@ export class OfficeScene {
     // Determine needed platforms
     const needed = new Set(["idle"]);
     for (const a of Object.values(agentMap)) {
-      needed.add(resolvePlatform(a, teams));
+      const plat = resolvePlatform(a, teams);
+      console.log("[scene] agent", a.name, "state:", a.state, "channel:", a.currentChannel, "→ platform:", plat);
+      needed.add(plat);
     }
     for (const tid of Object.keys(teams)) {
       needed.add(`team:${tid}`);
