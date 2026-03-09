@@ -47,14 +47,22 @@ export function useOfficeState(token: string): void {
       useEventStore.getState().addEvent(name, payload);
       machine.handleEvent(name, payload);
 
-      // Bridge WS run.completed content → chat panel (for announce runs where SSE returns empty)
-      // agent event payload shape: { type, agentId, runKind?, payload?: { content? } }
+      // Bridge WS run.completed / run.failed → chat panel (announce runs bypass SSE)
+      // agent event payload shape: { type, agentId, runKind?, payload?: { content?, error? } }
       if (name === "agent") {
         const p = payload as { type?: string; agentId?: string; payload?: unknown };
-        if (p.type === "run.completed" && p.agentId) {
-          const inner = p.payload as { content?: string } | null | undefined;
-          if (inner?.content) {
-            useOfficeStore.getState().setIncomingChatMessage({ agentKey: p.agentId, content: inner.content });
+        if (p.agentId) {
+          if (p.type === "run.completed") {
+            const inner = p.payload as { content?: string } | null | undefined;
+            if (inner?.content) {
+              useOfficeStore.getState().setIncomingChatMessage({ agentKey: p.agentId, content: inner.content });
+            }
+          } else if (p.type === "run.failed") {
+            const inner = p.payload as { error?: string } | null | undefined;
+            useOfficeStore.getState().setIncomingChatError({
+              agentKey: p.agentId,
+              error: inner?.error ?? "Agent run failed",
+            });
           }
         }
       }

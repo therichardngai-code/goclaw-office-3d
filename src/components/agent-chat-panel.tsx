@@ -13,9 +13,11 @@ export function AgentChatPanel() {
   const liveAgent = useOfficeStore((s) =>
     agent ? (s.mergedSnapshot?.agents[agent.id] ?? agent) : null
   );
-  // WS→chat bridge: agent replies that arrive via run.completed (not SSE)
+  // WS→chat bridge: agent replies / errors that arrive via WS (not SSE)
   const incomingChatMessage = useOfficeStore((s) => s.incomingChatMessage);
   const setIncomingChatMessage = useOfficeStore((s) => s.setIncomingChatMessage);
+  const incomingChatError = useOfficeStore((s) => s.incomingChatError);
+  const setIncomingChatError = useOfficeStore((s) => s.setIncomingChatError);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -72,6 +74,19 @@ export function AgentChatPanel() {
     setStreaming(false);
     setIncomingChatMessage(null);
   }, [incomingChatMessage, agent?.name, setIncomingChatMessage]);
+
+  // WS bridge: consume run.failed error
+  useEffect(() => {
+    if (!incomingChatError || !agent) return;
+    if (incomingChatError.agentKey !== agent.name) return;
+
+    cancelRef.current?.();
+    cancelRef.current = null;
+    setError(incomingChatError.error);
+    setStreamingContent("");
+    setStreaming(false);
+    setIncomingChatError(null);
+  }, [incomingChatError, agent?.name, setIncomingChatError]);
 
   const handleSend = useCallback(() => {
     if (!agent || !input.trim() || streaming) return;
