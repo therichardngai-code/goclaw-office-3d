@@ -3,6 +3,9 @@ import { useOfficeStore } from "@/stores/use-office-store";
 import { streamChat, type ChatMessage } from "@/api/chat-api";
 import { hex6, stateHex } from "@/scene/utils";
 
+// Persists chat history across panel close/reopen — keyed by agent ID
+const chatHistoryCache = new Map<string, ChatMessage[]>();
+
 export function AgentChatPanel() {
   const agent = useOfficeStore((s) => s.selectedAgent);
   const setSelectedAgent = useOfficeStore((s) => s.setSelectedAgent);
@@ -22,19 +25,25 @@ export function AgentChatPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Reset conversation when agent changes
+  // Restore cached history when agent changes; cancel any in-flight stream
   useEffect(() => {
-    setMessages([]);
+    cancelRef.current?.();
+    cancelRef.current = null;
+    setMessages(agent ? (chatHistoryCache.get(agent.id) ?? []) : []);
     setInput("");
     setError("");
     setStreaming(false);
     setStreamingContent("");
     setMinimized(false);
-    cancelRef.current?.();
-    cancelRef.current = null;
-    // Focus input after render
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [agent?.id]);
+
+  // Persist history to cache whenever messages change
+  useEffect(() => {
+    if (agent && messages.length > 0) {
+      chatHistoryCache.set(agent.id, messages);
+    }
+  }, [agent, messages]);
 
   // Auto-scroll to bottom on new messages/tokens
   useEffect(() => {
