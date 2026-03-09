@@ -1,0 +1,86 @@
+# GoClaw Office 3D — Full Stack
+#
+# Starts three services in one command:
+#   1. postgres      — pgvector database
+#   2. goclaw        — AI gateway backend  (ghcr.io/nextlevelbuilder/goclaw:latest)
+#   3. web3d         — 3D office UI        (built from this repo)
+#
+# Quick start:
+#   cp .env.example .env      # fill in GOCLAW_GATEWAY_TOKEN and GOCLAW_ENCRYPTION_KEY
+#   docker compose up -d --build
+#
+# Access:
+#   3D Office UI  →  http://localhost:8080
+#   GoClaw API    →  http://localhost:18790   (optional direct access)
+
+services:
+
+  # ── PostgreSQL (pgvector) ──────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg18
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-goclaw}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-goclaw}
+      POSTGRES_DB:       ${POSTGRES_DB:-goclaw}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-goclaw}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ── GoClaw Backend ─────────────────────────────────────────────────────────
+  # Pre-built image from GHCR — no source clone needed.
+  # Pinning to a specific version is recommended for production:
+  #   image: ghcr.io/nextlevelbuilder/goclaw:1.1.0
+  goclaw:
+    image: ghcr.io/nextlevelbuilder/goclaw:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - GOCLAW_HOST=0.0.0.0
+      - GOCLAW_PORT=18790
+      - GOCLAW_MODE=managed
+      - GOCLAW_CONFIG=/app/data/config.json
+      - GOCLAW_POSTGRES_DSN=postgres://${POSTGRES_USER:-goclaw}:${POSTGRES_PASSWORD:-goclaw}@postgres:5432/${POSTGRES_DB:-goclaw}?sslmode=disable
+      - GOCLAW_GATEWAY_TOKEN=${GOCLAW_GATEWAY_TOKEN}
+      - GOCLAW_ENCRYPTION_KEY=${GOCLAW_ENCRYPTION_KEY}
+    volumes:
+      - goclaw-data:/app/data
+      - goclaw-workspace:/app/workspace
+      - goclaw-skills:/app/skills
+    ports:
+      - "${GOCLAW_API_PORT:-18790}:18790"   # optional: direct API access
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:18790/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    restart: unless-stopped
+
+  # ── GoClaw Office 3D (Web3D) ───────────────────────────────────────────────
+  # Built from this repo's Dockerfile.
+  # nginx proxies /ws and /v1/* to the goclaw service on the shared network.
+  web3d:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      goclaw:
+        condition: service_healthy
+    environment:
+      - GOCLAW_HOST=goclaw     # Docker service name — resolves on internal network
+      - GOCLAW_PORT=18790
+    ports:
+      - "${WEB3D_PORT:-8080}:80"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  goclaw-data:
+  goclaw-workspace:
+  goclaw-skills:
