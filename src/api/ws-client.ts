@@ -5,7 +5,7 @@ type EventHandler = (payload: unknown) => void;
 interface WsFrame {
   type: "req" | "res" | "event";
   id?: string;
-  name?: string;   // for event frames
+  event?: string;  // for event frames — Go EventFrame uses "event" field, not "name"
   ok?: boolean;    // for res frames
   payload?: unknown;
 }
@@ -95,12 +95,12 @@ export class OfficeWsClient {
       return;
     }
 
-    if (frame.type === "event" && frame.name) {
+    if (frame.type === "event" && frame.event) {
       // Named handlers (used by state machine)
-      this.namedHandlers.forEach((h) => h(frame.name!, frame.payload));
+      this.namedHandlers.forEach((h) => h(frame.event!, frame.payload));
 
       // Per-event handlers (legacy support)
-      this.handlers.get(frame.name)?.forEach((h) => h(frame.payload));
+      this.handlers.get(frame.event)?.forEach((h) => h(frame.payload));
     }
   }
 

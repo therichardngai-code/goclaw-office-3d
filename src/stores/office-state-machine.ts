@@ -165,148 +165,152 @@ export class OfficeStateMachine {
   // ── Delegation events ────────────────────────────────────────────────────────
 
   private handleDelegationStarted(payload: unknown): void {
+    // DelegationEventPayload uses snake_case JSON fields
     const p = payload as {
-      delegationId?: string;
-      sourceAgentKey?: string;
-      targetAgentKey?: string;
-      sourceDisplayName?: string;
-      targetDisplayName?: string;
+      delegation_id?: string;
+      source_agent_key?: string;
+      target_agent_key?: string;
+      source_display_name?: string;
+      target_display_name?: string;
       task?: string;
       mode?: string;
-      teamId?: string;
-      teamTaskId?: string;
+      team_id?: string;
+      team_task_id?: string;
     };
-    if (!p.delegationId) return;
+    if (!p.delegation_id) return;
 
     this.delegations = [
       ...this.delegations.slice(-(MAX_DELEGATIONS - 1)),
       {
-        id: p.delegationId,
-        sourceId: p.sourceAgentKey ?? "",
-        targetId: p.targetAgentKey ?? "",
-        sourceDisplayName: p.sourceDisplayName,
-        targetDisplayName: p.targetDisplayName,
+        id: p.delegation_id,
+        sourceId: p.source_agent_key ?? "",
+        targetId: p.target_agent_key ?? "",
+        sourceDisplayName: p.source_display_name,
+        targetDisplayName: p.target_display_name,
         task: p.task,
         status: "running",
         mode: p.mode ?? "sync",
-        teamId: p.teamId,
-        teamTaskId: p.teamTaskId,
+        teamId: p.team_id,
+        teamTaskId: p.team_task_id,
         startedAt: new Date().toISOString(),
       },
     ];
 
     // Speech bubbles on both ends
-    if (p.sourceAgentKey && this.agents[p.sourceAgentKey]) {
-      this.agents[p.sourceAgentKey]!.speechBubble =
-        `→ Briefing ${p.targetDisplayName ?? p.targetAgentKey}...`;
+    if (p.source_agent_key && this.agents[p.source_agent_key]) {
+      this.agents[p.source_agent_key]!.speechBubble =
+        `→ Briefing ${p.target_display_name ?? p.target_agent_key}...`;
     }
-    if (p.targetAgentKey && this.agents[p.targetAgentKey]) {
-      this.agents[p.targetAgentKey]!.speechBubble = "← Receiving task...";
+    if (p.target_agent_key && this.agents[p.target_agent_key]) {
+      this.agents[p.target_agent_key]!.speechBubble = "← Receiving task...";
     }
   }
 
   private handleDelegationTerminal(payload: unknown, status: string): void {
-    const p = payload as { delegationId?: string; error?: string };
-    if (!p.delegationId) return;
+    const p = payload as { delegation_id?: string; error?: string };
+    if (!p.delegation_id) return;
     this.delegations = this.delegations.map((d) =>
-      d.id === p.delegationId ? { ...d, status, error: p.error } : d
+      d.id === p.delegation_id ? { ...d, status, error: p.error } : d
     );
   }
 
   private handleDelegationProgress(payload: unknown): void {
+    // DelegationProgressPayload.Active serializes as "active_delegations"
     const p = payload as {
-      active?: Array<{ delegationId: string; elapsedMs: number }>;
+      active_delegations?: Array<{ delegation_id: string; elapsed_ms: number }>;
     };
-    for (const item of p.active ?? []) {
+    for (const item of p.active_delegations ?? []) {
       this.delegations = this.delegations.map((d) =>
-        d.id === item.delegationId ? { ...d, elapsedMs: item.elapsedMs } : d
+        d.id === item.delegation_id ? { ...d, elapsedMs: item.elapsed_ms } : d
       );
     }
   }
 
   private handleDelegationAccumulated(payload: unknown): void {
     const p = payload as {
-      delegationId?: string;
-      targetAgentKey?: string;
+      delegation_id?: string;
+      target_agent_key?: string;
     };
-    if (p.delegationId) {
+    if (p.delegation_id) {
       this.delegations = this.delegations.map((d) =>
-        d.id === p.delegationId ? { ...d, status: "accumulated" } : d
+        d.id === p.delegation_id ? { ...d, status: "accumulated" } : d
       );
     }
-    if (p.targetAgentKey && this.agents[p.targetAgentKey]) {
-      this.agents[p.targetAgentKey]!.speechBubble = "Done — waiting for team...";
+    if (p.target_agent_key && this.agents[p.target_agent_key]) {
+      this.agents[p.target_agent_key]!.speechBubble = "Done — waiting for team...";
     }
   }
 
   // ── Team events ───────────────────────────────────────────────────────────────
 
   private handleTeamCreated(payload: unknown): void {
+    // TeamCreatedPayload uses snake_case; no member list — members arrive via team.member.added
     const p = payload as {
-      teamId?: string;
-      teamName?: string;
-      leadAgentKey?: string;
-      leadDisplayName?: string;
-      memberKeys?: string[];
+      team_id?: string;
+      team_name?: string;
+      lead_agent_key?: string;
+      lead_display_name?: string;
     };
-    if (!p.teamId) return;
-    this.teams[p.teamId] = {
-      id: p.teamId,
-      name: p.teamName ?? p.teamId,
-      leadId: p.leadAgentKey ?? "",
-      leadDisplayName: p.leadDisplayName,
-      members: p.memberKeys ?? [],
+    if (!p.team_id) return;
+    this.teams[p.team_id] = {
+      id: p.team_id,
+      name: p.team_name ?? p.team_id,
+      leadId: p.lead_agent_key ?? "",
+      leadDisplayName: p.lead_display_name,
+      members: [],
     };
   }
 
   private handleTeamUpdated(payload: unknown): void {
-    const p = payload as { teamId?: string; teamName?: string };
-    if (p.teamId && this.teams[p.teamId]) {
-      this.teams[p.teamId] = {
-        ...this.teams[p.teamId]!,
-        name: p.teamName ?? this.teams[p.teamId]!.name,
+    const p = payload as { team_id?: string; team_name?: string };
+    if (p.team_id && this.teams[p.team_id]) {
+      this.teams[p.team_id] = {
+        ...this.teams[p.team_id]!,
+        name: p.team_name ?? this.teams[p.team_id]!.name,
       };
     }
   }
 
   private handleTeamDeleted(payload: unknown): void {
-    const p = payload as { teamId?: string };
-    if (p.teamId) delete this.teams[p.teamId];
+    const p = payload as { team_id?: string };
+    if (p.team_id) delete this.teams[p.team_id];
   }
 
   private handleTeamMember(payload: unknown, action: "add" | "remove"): void {
-    const p = payload as { teamId?: string; agentKey?: string };
-    if (!p.teamId || !this.teams[p.teamId] || !p.agentKey) return;
-    const team = this.teams[p.teamId]!;
+    // TeamMemberAddedPayload / TeamMemberRemovedPayload use snake_case
+    const p = payload as { team_id?: string; agent_key?: string };
+    if (!p.team_id || !this.teams[p.team_id] || !p.agent_key) return;
+    const team = this.teams[p.team_id]!;
     if (action === "add") {
-      if (!team.members.includes(p.agentKey)) {
-        team.members = [...team.members, p.agentKey];
+      if (!team.members.includes(p.agent_key)) {
+        team.members = [...team.members, p.agent_key];
       }
     } else {
-      team.members = team.members.filter((m) => m !== p.agentKey);
+      team.members = team.members.filter((m) => m !== p.agent_key);
     }
   }
 
   // ── Task events ───────────────────────────────────────────────────────────────
 
   private handleTask(payload: unknown, action: string): void {
+    // TeamTaskEventPayload uses snake_case
     const p = payload as {
-      taskId?: string;
-      teamId?: string;
+      task_id?: string;
+      team_id?: string;
       subject?: string;
       status?: string;
-      ownerAgentKey?: string;
-      ownerDisplayName?: string;
+      owner_agent_key?: string;
+      owner_display_name?: string;
       reason?: string;
     };
-    if (!p.taskId) return;
-    this.tasks[p.taskId] = {
-      id: p.taskId,
-      teamId: p.teamId ?? "",
+    if (!p.task_id) return;
+    this.tasks[p.task_id] = {
+      id: p.task_id,
+      teamId: p.team_id ?? "",
       subject: p.subject ?? "",
       status: p.status ?? action,
-      ownerAgentKey: p.ownerAgentKey,
-      ownerDisplayName: p.ownerDisplayName,
+      ownerAgentKey: p.owner_agent_key,
+      ownerDisplayName: p.owner_display_name,
       reason: p.reason,
       timestamp: new Date().toISOString(),
     };
@@ -315,27 +319,28 @@ export class OfficeStateMachine {
   // ── Agent link events ──────────────────────────────────────────────────────────
 
   private handleAgentLink(payload: unknown, action: "upsert" | "delete"): void {
+    // AgentLinkCreatedPayload / AgentLinkUpdatedPayload / AgentLinkDeletedPayload use snake_case
     const p = payload as {
-      linkId?: string;
-      sourceAgentKey?: string;
-      targetAgentKey?: string;
+      link_id?: string;
+      source_agent_key?: string;
+      target_agent_key?: string;
       direction?: string;
       status?: string;
-      teamId?: string;
+      team_id?: string;
     };
-    if (!p.linkId) return;
+    if (!p.link_id) return;
     if (action === "delete") {
-      this.agentLinks = this.agentLinks.filter((l) => l.id !== p.linkId);
+      this.agentLinks = this.agentLinks.filter((l) => l.id !== p.link_id);
     } else {
       const link: OfficeAgentLink = {
-        id: p.linkId,
-        sourceAgentKey: p.sourceAgentKey ?? "",
-        targetAgentKey: p.targetAgentKey ?? "",
+        id: p.link_id,
+        sourceAgentKey: p.source_agent_key ?? "",
+        targetAgentKey: p.target_agent_key ?? "",
         direction: p.direction ?? "one-way",
         status: p.status ?? "active",
-        teamId: p.teamId,
+        teamId: p.team_id,
       };
-      const idx = this.agentLinks.findIndex((l) => l.id === p.linkId);
+      const idx = this.agentLinks.findIndex((l) => l.id === p.link_id);
       if (idx >= 0) {
         this.agentLinks = this.agentLinks.map((l, i) => (i === idx ? link : l));
       } else {
@@ -347,11 +352,13 @@ export class OfficeStateMachine {
   // ── Agent summoning ────────────────────────────────────────────────────────────
 
   private handleAgentSummoning(payload: unknown): void {
-    const p = payload as { agentKey?: string; displayName?: string };
-    if (!p.agentKey || this.agents[p.agentKey]) return;
-    this.agents[p.agentKey] = {
-      ...this.newAgent(p.agentKey),
-      displayName: p.displayName ?? p.agentKey,
+    // Summoner broadcasts { type, agent_id } — use agent_id as key
+    const p = payload as { agent_id?: string; display_name?: string };
+    const key = p.agent_id;
+    if (!key || this.agents[key]) return;
+    this.agents[key] = {
+      ...this.newAgent(key),
+      displayName: p.display_name ?? key,
     };
   }
 
