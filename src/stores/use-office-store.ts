@@ -104,6 +104,8 @@ interface OfficeStore {
   agentPanelOpen: boolean;
   machine: OfficeStateMachine | null;
   selectedAgent: OfficeAgent | null;
+  // WS→chat bridge: when agent reply arrives via run.completed WS event (not SSE)
+  incomingChatMessage: { agentKey: string; content: string } | null;
 
   setToken: (t: string) => void;
   setConnected: (c: boolean) => void;
@@ -117,6 +119,7 @@ interface OfficeStore {
   toggleNotificationPanel: () => void;
   toggleAgentPanel: () => void;
   setSelectedAgent: (agent: OfficeAgent | null) => void;
+  setIncomingChatMessage: (m: { agentKey: string; content: string } | null) => void;
 }
 
 const MAX_LOCAL_NOTIFICATIONS = 50;
@@ -132,6 +135,7 @@ export const useOfficeStore = create<OfficeStore>((set, get) => ({
   agentPanelOpen: false,
   machine: null,
   selectedAgent: null,
+  incomingChatMessage: null,
 
   setToken: (token) => {
     localStorage.setItem(LOCAL_STORAGE_TOKEN_KEY, token);
@@ -176,4 +180,5 @@ export const useOfficeStore = create<OfficeStore>((set, get) => ({
   toggleAgentPanel: () =>
     set((state) => ({ agentPanelOpen: !state.agentPanelOpen })),
   setSelectedAgent: (agent) => set({ selectedAgent: agent }),
+  setIncomingChatMessage: (incomingChatMessage) => set({ incomingChatMessage }),
 }));

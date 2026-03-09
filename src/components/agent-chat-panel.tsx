@@ -13,6 +13,9 @@ export function AgentChatPanel() {
   const liveAgent = useOfficeStore((s) =>
     agent ? (s.mergedSnapshot?.agents[agent.id] ?? agent) : null
   );
+  // WS→chat bridge: agent replies that arrive via run.completed (not SSE)
+  const incomingChatMessage = useOfficeStore((s) => s.incomingChatMessage);
+  const setIncomingChatMessage = useOfficeStore((s) => s.setIncomingChatMessage);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -50,6 +53,26 @@ export function AgentChatPanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingContent]);
 
+  // WS bridge: consume run.completed content when SSE delivers nothing
+  useEffect(() => {
+    if (!incomingChatMessage || !agent) return;
+    if (incomingChatMessage.agentKey !== agent.name) return;
+
+    // Cancel any in-flight SSE (abort fires onError "AbortError" which is silently ignored)
+    cancelRef.current?.();
+    cancelRef.current = null;
+
+    setMessages((prev) => {
+      // Avoid duplicate if SSE already added the same content
+      const last = prev[prev.length - 1];
+      if (last?.role === "assistant" && last.content === incomingChatMessage.content) return prev;
+      return [...prev, { role: "assistant", content: incomingChatMessage.content }];
+    });
+    setStreamingContent("");
+    setStreaming(false);
+    setIncomingChatMessage(null);
+  }, [incomingChatMessage, agent?.name, setIncomingChatMessage]);
+
   const handleSend = useCallback(() => {
     if (!agent || !input.trim() || streaming) return;
 
@@ -66,7 +89,10 @@ export function AgentChatPanel() {
       nextHistory,
       (token) => setStreamingContent((prev) => prev + token),
       (fullContent) => {
-        setMessages((prev) => [...prev, { role: "assistant", content: fullContent }]);
+        // Only add SSE content if non-empty — empty means backend used WS path instead
+        if (fullContent) {
+          setMessages((prev) => [...prev, { role: "assistant", content: fullContent }]);
+        }
         setStreamingContent("");
         setStreaming(false);
         cancelRef.current = null;
