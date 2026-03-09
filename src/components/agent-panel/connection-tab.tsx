@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useOfficeStore } from "@/stores/use-office-store";
 import { CharacterPreview } from "./character-preview";
+import { ChannelSetupForm } from "./channel-setup-form";
 import { stateHex, hex6, cap } from "@/scene/utils";
 
 export function ConnectionTab() {
   const snapshot = useOfficeStore((s) => s.mergedSnapshot);
   const agents = snapshot ? Object.values(snapshot.agents) : [];
   const [idx, setIdx] = useState(0);
+  const [showChannelForm, setShowChannelForm] = useState(false);
 
   if (agents.length === 0) {
     return (
@@ -36,14 +38,8 @@ export function ConnectionTab() {
           <p className="text-white font-semibold text-sm text-center">{displayName}</p>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={prev}
-              className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
-            >
-              ‹
-            </button>
+            <button onClick={prev} className="text-gray-400 hover:text-white transition-colors text-xl leading-none">‹</button>
 
-            {/* Dots — max 8; fallback to counter only */}
             {agents.length <= 8 ? (
               <div className="flex gap-1.5">
                 {agents.map((_, i) => (
@@ -60,12 +56,7 @@ export function ConnectionTab() {
               <span className="text-gray-400 text-xs">{safeIdx + 1} / {agents.length}</span>
             )}
 
-            <button
-              onClick={next}
-              className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
-            >
-              ›
-            </button>
+            <button onClick={next} className="text-gray-400 hover:text-white transition-colors text-xl leading-none">›</button>
           </div>
 
           {agents.length <= 8 && (
@@ -74,24 +65,21 @@ export function ConnectionTab() {
         </div>
       </div>
 
-      {/* Right: agent details */}
+      {/* Right: agent info + channel setup */}
       <div className="flex-1 flex flex-col p-6 gap-4 min-h-0 overflow-y-auto">
         <h3 className="text-white font-semibold text-base">{displayName}</h3>
 
         <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-          <InfoRow label="Key" value={agent.name} />
+          <InfoRow label="Key"      value={agent.name} />
           <InfoRow label="Provider" value={agent.provider} />
-          <InfoRow label="Model" value={agent.model} />
-          <InfoRow label="Type" value={cap(agent.agentType ?? "open")} />
-          <InfoRow label="Channel" value={agent.currentChannel ?? "—"} />
+          <InfoRow label="Model"    value={agent.model} />
+          <InfoRow label="Type"     value={cap(agent.agentType ?? "open")} />
+          <InfoRow label="Channel"  value={agent.currentChannel ?? "—"} />
 
           <div>
             <p className="text-xs text-gray-400 mb-1.5 font-medium tracking-wide uppercase">State</p>
             <div className="flex items-center gap-2">
-              <span
-                className="w-2 h-2 rounded-full flex-shrink-0"
-                style={{ backgroundColor: stateColor }}
-              />
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: stateColor }} />
               <span className="text-white text-sm">{cap(agent.state.replace("_", " "))}</span>
             </div>
           </div>
@@ -99,24 +87,41 @@ export function ConnectionTab() {
           <div>
             <p className="text-xs text-gray-400 mb-1.5 font-medium tracking-wide uppercase">Health</p>
             <div className="flex items-center gap-2">
-              <span
-                className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                  agent.state === "error" ? "bg-red-500" : "bg-green-500"
-                }`}
-              />
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${agent.state === "error" ? "bg-red-500" : "bg-green-500"}`} />
               <span className="text-white text-sm">{agent.state === "error" ? "Error" : "OK"}</span>
             </div>
           </div>
         </div>
 
         {agent.speechBubble && (
-          <div className="mt-1">
+          <div>
             <p className="text-xs text-gray-400 mb-1.5 font-medium tracking-wide uppercase">Activity</p>
             <p className="text-white/70 text-xs leading-relaxed bg-[#0a0a0f] border border-[#1e1e2a] rounded p-3 line-clamp-4">
               {agent.speechBubble}
             </p>
           </div>
         )}
+
+        {/* Channel setup section */}
+        <div className="border-t border-[#1e1e2a] pt-4">
+          <button
+            onClick={() => setShowChannelForm((v) => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
+          >
+            <span className="text-[#e8352a]">{showChannelForm ? "▼" : "▶"}</span>
+            Connect Channel
+          </button>
+
+          {showChannelForm && (
+            <div className="mt-3">
+              <ChannelSetupForm
+                agentId={agent.id}
+                agentKey={agent.name}
+                onSuccess={() => setShowChannelForm(false)}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
