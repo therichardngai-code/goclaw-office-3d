@@ -294,8 +294,8 @@ export class CharacterManager {
       const { mesh, anims } = await this.loader.loadAnim(animName);
       if (!this.map.has(id) || a.animGLBName !== animName) return;
 
-      mesh.scale.set(100, 100, 100);
-      mesh.position.set(0, 0, 0);
+      // Normalize to same height as static meshes so all characters share a consistent scale
+      this.loader.normalizeHeight(mesh);
       mesh.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
           (child as THREE.Mesh).castShadow = true;
@@ -386,7 +386,9 @@ export class CharacterManager {
       if (a.mixer) {
         a.mixer.update(delta);
 
-        if (a.animMesh && (a.animState === "working" || a.animState === "talking")) {
+        // Use animMesh for animated characters, fall back to staticMesh for pose-only characters
+        const activeMesh = a.animMesh ?? a.staticMesh;
+        if (activeMesh && (a.animState === "working" || a.animState === "talking")) {
           if (a.talkingWith) {
             const other = this.map.get(a.talkingWith);
             if (other) {
@@ -427,8 +429,8 @@ export class CharacterManager {
             }
           }
 
-          a.animMesh.position.set(a.wanderX, 0, a.wanderZ);
-          a.animMesh.rotation.set(0, a.wanderRotY, 0);
+          activeMesh.position.set(a.wanderX, 0, a.wanderZ);
+          activeMesh.rotation.set(0, a.wanderRotY, 0);
         }
       }
 
@@ -464,9 +466,10 @@ export class CharacterManager {
             a.wanderRotY += shortestAngle(a.wanderRotY, targetRotY) * 0.12;
           }
 
-          if (a.animMesh) {
-            a.animMesh.position.set(a.wanderX, 0, a.wanderZ);
-            a.animMesh.rotation.set(0, a.wanderRotY, 0);
+          const wanderMesh = a.animMesh ?? a.staticMesh;
+          if (wanderMesh) {
+            wanderMesh.position.set(a.wanderX, 0, a.wanderZ);
+            wanderMesh.rotation.set(0, a.wanderRotY, 0);
           }
         }
       }

@@ -2,9 +2,11 @@ import { useState, useEffect } from "react";
 import {
   fetchProviders,
   fetchProviderModels,
+  fetchAllAgents,
   createAgent,
   type Provider,
 } from "@/api/agent-api";
+import { useOfficeStore } from "@/stores/use-office-store";
 import type { AgentPreset } from "@/data/agent-presets";
 
 interface Props {
@@ -22,6 +24,7 @@ function slugify(s: string): string {
 }
 
 export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
+  const setApiAgents = useOfficeStore((s) => s.setApiAgents);
   const [displayName, setDisplayName] = useState(preset?.label ?? "");
   const [agentKey, setAgentKey] = useState(preset?.suggestedKey ?? "");
   const [description, setDescription] = useState(preset?.prompt ?? "");
@@ -72,6 +75,8 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
     });
     setLoading(false);
     if (result.ok) {
+      // Immediately refresh agents so the new agent appears without waiting for the 30s poll
+      fetchAllAgents().then(setApiAgents).catch(() => {});
       onSuccess();
     } else {
       setError(result.error ?? "Failed to create agent");
