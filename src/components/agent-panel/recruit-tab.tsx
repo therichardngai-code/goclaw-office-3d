@@ -86,7 +86,7 @@ export function RecruitTab({ onSuccess }: Props) {
             onClick={() => setSubTab(t)}
             className={`px-5 py-3 text-sm font-medium transition-colors border-b-2 -mb-px ${
               subTab === t
-                ? "text-white border-[#e8352a]"
+                ? "text-white border-[#00ADD8]"
                 : "text-gray-400 border-transparent hover:text-white/80"
             }`}
           >
@@ -102,7 +102,7 @@ export function RecruitTab({ onSuccess }: Props) {
             <button
               key={p.suggestedKey}
               onClick={() => setSelected(p)}
-              className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#0a0a0f] border border-[#1e1e2a] hover:border-[#e8352a]/60 hover:bg-[#130808] transition-all group"
+              className="flex flex-col items-center gap-2 p-3 rounded-xl bg-[#0a0a0f] border border-[#1e1e2a] hover:border-[#00ADD8]/60 hover:bg-[#001f2e] transition-all group"
             >
               <div className="pointer-events-none">
                 <CharacterPreview

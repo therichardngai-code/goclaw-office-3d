@@ -10,6 +10,7 @@ import {
 import { verifyProvider } from "@/api/provider-api";
 import { useOfficeStore } from "@/stores/use-office-store";
 import { AddProviderForm } from "./add-provider-form";
+import { CustomSelect, ModelCombobox } from "./custom-select";
 import type { AgentPreset } from "@/data/agent-presets";
 
 interface Props {
@@ -39,7 +40,6 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState("");
   const isPredefined = !!preset;
-  const datalistId = `model-opts-${isPredefined ? "pre" : "open"}`;
 
   const loadProviders = () => {
     setLoadingProviders(true);
@@ -71,7 +71,6 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
     setVerifyResult(null);
   }, [provider, providers]);
 
-  // Reset verify result whenever model changes
   useEffect(() => { setVerifyResult(null); }, [model]);
 
   const handleNameChange = (v: string) => {
@@ -88,7 +87,6 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
 
   const handleProviderAdded = (newProviderName: string) => {
     setShowAddProvider(false);
-    // Re-fetch providers then auto-select the new one
     setLoadingProviders(true);
     fetchProviders().then((list) => {
       setProviders(list);
@@ -131,6 +129,12 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
     }
   };
 
+  // Build provider options for CustomSelect
+  const providerOptions = providers.map((p) => ({
+    value: p.name,
+    label: `${p.display_name || p.name}${!p.enabled ? " (disabled)" : ""}`,
+  }));
+
   return (
     <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto">
       <Field label="Display Name">
@@ -141,29 +145,25 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
         <input className={inp} value={agentKey} onChange={(e) => setAgentKey(e.target.value)} placeholder="my-support-agent" />
       </Field>
 
-      {/* Provider — always a <select>; "＋ Add Provider" toggle below */}
+      {/* Provider — custom dark select; "＋ Add Provider" toggle below */}
       <Field label="Provider">
-        {loadingProviders ? (
-          <select className={inp} disabled><option>Loading providers…</option></select>
-        ) : providers.length > 0 ? (
-          <select className={inp} value={provider} onChange={(e) => handleProviderChange(e.target.value)}>
-            <option value="">Select provider…</option>
-            {providers.map((p) => (
-              <option key={p.id} value={p.name}>
-                {p.display_name || p.name}{!p.enabled ? " (disabled)" : ""}
-              </option>
-            ))}
-          </select>
-        ) : (
+        {providers.length === 0 && !loadingProviders ? (
           <p className="text-gray-500 text-xs italic py-1">No providers configured — add one below.</p>
+        ) : (
+          <CustomSelect
+            value={provider}
+            onChange={handleProviderChange}
+            options={providerOptions}
+            placeholder="Select provider…"
+            disabled={loadingProviders}
+          />
         )}
 
-        {/* Toggle to add a new provider inline */}
         {!showAddProvider && (
           <button
             type="button"
             onClick={() => setShowAddProvider(true)}
-            className="mt-1.5 text-xs text-[#e8352a] hover:text-[#c42d22] transition-colors"
+            className="mt-1.5 text-xs text-[#00ADD8] hover:text-[#007D9C] transition-colors"
           >
             ＋ Add LLM Provider
           </button>
@@ -177,17 +177,17 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
         />
       )}
 
-      {/* Model — combobox: free-type any ID, datalist for API suggestions + [Check] verify */}
+      {/* Model — combobox: free-type + dark suggestion list + [Check] verify */}
       <Field label="Model">
         <div className="flex gap-2">
-          <input
-            className={`${inp} flex-1`}
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            placeholder={loadingModels ? "Loading models…" : models.length > 0 ? "Type or select model…" : "e.g. claude-opus-4-6"}
-            list={datalistId}
-            disabled={loadingModels}
-          />
+          <div className="flex-1">
+            <ModelCombobox
+              value={model}
+              onChange={setModel}
+              models={models}
+              loading={loadingModels}
+            />
+          </div>
           <button
             type="button"
             onClick={handleVerify}
@@ -197,9 +197,6 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
             {verifying ? "…" : "Check"}
           </button>
         </div>
-        <datalist id={datalistId}>
-          {models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </datalist>
         {verifyResult && (
           <p className={`text-xs mt-1 ${verifyResult.valid ? "text-green-400" : "text-red-400"}`}>
             {verifyResult.valid ? "✓ Model verified" : `✗ ${verifyResult.error ?? "Verification failed"}`}
@@ -222,7 +219,7 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
         <button onClick={onCancel} className="px-5 py-2 rounded text-sm text-white/60 hover:text-white border border-[#2a2a3a] hover:border-[#3a3a4a] transition-colors">
           Cancel
         </button>
-        <button onClick={handleSubmit} disabled={loading} className="px-5 py-2 rounded text-sm font-semibold bg-[#e8352a] hover:bg-[#c42d22] text-white transition-colors disabled:opacity-50">
+        <button onClick={handleSubmit} disabled={loading} className="px-5 py-2 rounded text-sm font-semibold bg-[#00ADD8] hover:bg-[#007D9C] text-white transition-colors disabled:opacity-50">
           {loading ? "Creating…" : "Create"}
         </button>
       </div>
@@ -230,7 +227,7 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
   );
 }
 
-const inp = "w-full px-3 py-2 bg-[#1a1a24] border border-[#2a2a3a] rounded text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#e8352a]/60 transition-colors";
+const inp = "w-full px-3 py-2 bg-[#1a1a24] border border-[#2a2a3a] rounded text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#00ADD8]/60 transition-colors";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

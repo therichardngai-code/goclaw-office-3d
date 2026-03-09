@@ -102,7 +102,7 @@ export function NotificationPanel() {
               onClick={() => setTab(t)}
               className={`flex-1 py-2 text-xs font-medium transition-colors capitalize ${
                 tab === t
-                  ? "text-white border-b-2 border-[#e8352a]"
+                  ? "text-white border-b-2 border-[#00ADD8]"
                   : "text-white/40 hover:text-white/70"
               }`}
             >

@@ -112,7 +112,7 @@ export function AddProviderForm({ onSuccess, onCancel }: Props) {
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="px-4 py-1.5 rounded text-xs font-semibold bg-[#e8352a] hover:bg-[#c42d22] text-white transition-colors disabled:opacity-50"
+          className="px-4 py-1.5 rounded text-xs font-semibold bg-[#00ADD8] hover:bg-[#007D9C] text-white transition-colors disabled:opacity-50"
         >
           {loading ? "Adding…" : "Add Provider"}
         </button>
@@ -121,5 +121,5 @@ export function AddProviderForm({ onSuccess, onCancel }: Props) {
   );
 }
 
-const inp = "w-full px-3 py-2 bg-[#1a1a24] border border-[#2a2a3a] rounded text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#e8352a]/60 transition-colors";
+const inp = "w-full px-3 py-2 bg-[#1a1a24] border border-[#2a2a3a] rounded text-white text-sm placeholder-gray-500 focus:outline-none focus:border-[#00ADD8]/60 transition-colors";
 const lbl = "block text-xs text-gray-400 mb-1.5 font-medium tracking-wide uppercase";

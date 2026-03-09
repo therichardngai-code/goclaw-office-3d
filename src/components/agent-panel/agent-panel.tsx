@@ -36,7 +36,7 @@ export function AgentPanel() {
         {/* Header */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-[#1e1e2a] flex-shrink-0">
           <svg
-            className="w-5 h-5 text-[#e8352a] flex-shrink-0"
+            className="w-5 h-5 text-[#00ADD8] flex-shrink-0"
             fill="none"
             stroke="currentColor"
             strokeWidth={1.8}
@@ -57,7 +57,7 @@ export function AgentPanel() {
                 onClick={() => setTab(t)}
                 className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
                   tab === t
-                    ? "bg-[#e8352a] text-white"
+                    ? "bg-[#00ADD8] text-white"
                     : "text-gray-400 hover:text-white hover:bg-white/5"
                 }`}
               >

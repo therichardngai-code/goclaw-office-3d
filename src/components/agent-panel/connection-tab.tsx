@@ -108,7 +108,7 @@ export function ConnectionTab() {
             onClick={() => setShowChannelForm((v) => !v)}
             className="flex items-center gap-2 text-sm font-medium text-white/70 hover:text-white transition-colors"
           >
-            <span className="text-[#e8352a]">{showChannelForm ? "▼" : "▶"}</span>
+            <span className="text-[#00ADD8]">{showChannelForm ? "▼" : "▶"}</span>
             Connect Channel
           </button>
 
