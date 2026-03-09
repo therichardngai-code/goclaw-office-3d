@@ -8,8 +8,9 @@ const getHeaders = (): Record<string, string> => ({
 });
 
 export interface Provider {
-  id: string;
-  name: string;
+  id: string;            // UUID — used only for /v1/providers/{id}/models
+  name: string;          // slug (e.g. "minimax-native") — sent to createAgent as provider
+  display_name?: string; // human-readable label for UI (e.g. "MiniMax Native")
   enabled: boolean;
 }
 
