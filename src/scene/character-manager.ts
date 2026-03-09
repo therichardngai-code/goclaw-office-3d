@@ -294,8 +294,8 @@ export class CharacterManager {
       const { mesh, anims } = await this.loader.loadAnim(animName);
       if (!this.map.has(id) || a.animGLBName !== animName) return;
 
-      // Normalize to same height as static meshes so all characters share a consistent scale
-      this.loader.normalizeHeight(mesh);
+      mesh.scale.set(100, 100, 100);
+      mesh.position.set(0, 0, 0);
       mesh.traverse((child) => {
         if ((child as THREE.Mesh).isMesh) {
           (child as THREE.Mesh).castShadow = true;
