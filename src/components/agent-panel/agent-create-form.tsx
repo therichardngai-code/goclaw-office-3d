@@ -33,21 +33,37 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
   const [model, setModel] = useState("");
   const [providers, setProviders] = useState<Provider[]>([]);
   const [models, setModels] = useState<ProviderModel[]>([]);
+  const [loadingProviders, setLoadingProviders] = useState(true);
+  const [loadingModels, setLoadingModels] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const isPredefined = !!preset;
 
+  // Load providers on mount; auto-select first enabled one
   useEffect(() => {
-    fetchProviders().then(setProviders);
+    fetchProviders().then((list) => {
+      setProviders(list);
+      setLoadingProviders(false);
+      // Auto-select first enabled provider (matches goclaw web UI behaviour)
+      if (list.length > 0) {
+        const first = list.find((p) => p.enabled) ?? list[0]!;
+        setProvider(first.name);
+      }
+    });
   }, []);
 
+  // Fetch models whenever provider changes
   useEffect(() => {
-    // provider state holds p.name (slug), look up by name to get UUID + provider_type
     const found = providers.find((p) => p.name === provider);
     if (found) {
-      fetchProviderModels(found.id, found.provider_type).then(setModels);
+      setLoadingModels(true);
+      fetchProviderModels(found.id, found.provider_type).then((list) => {
+        setModels(list);
+        setLoadingModels(false);
+      });
     } else {
       setModels([]);
+      setLoadingModels(false);
     }
     setModel("");
   }, [provider, providers]);
@@ -55,6 +71,11 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
   const handleNameChange = (v: string) => {
     setDisplayName(v);
     setAgentKey(slugify(v) || (preset?.suggestedKey ?? ""));
+  };
+
+  const handleProviderChange = (v: string) => {
+    setProvider(v);
+    setModel("");
   };
 
   const handleSubmit = async () => {
@@ -77,13 +98,15 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
     });
     setLoading(false);
     if (result.ok) {
-      // Immediately refresh agents so the new agent appears without waiting for the 30s poll
       fetchAllAgents().then(setApiAgents).catch(() => {});
       onSuccess();
     } else {
       setError(result.error ?? "Failed to create agent");
     }
   };
+
+  // Unique datalist id per form instance to avoid collisions
+  const datalistId = `model-options-${isPredefined ? "pre" : "open"}`;
 
   return (
     <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto">
@@ -105,16 +128,20 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
         />
       </Field>
 
+      {/* Provider — always a <select>; shows "Loading…" while fetching */}
       <Field label="Provider">
-        {providers.length > 0 ? (
+        {loadingProviders ? (
+          <select className={inputCls} disabled>
+            <option>Loading providers…</option>
+          </select>
+        ) : providers.length > 0 ? (
           <select
             className={inputCls}
             value={provider}
-            onChange={(e) => setProvider(e.target.value)}
+            onChange={(e) => handleProviderChange(e.target.value)}
           >
             <option value="">Select provider…</option>
             {providers.map((p) => (
-              // value = p.name (slug) — this is what createAgent sends as "provider"
               <option key={p.id} value={p.name}>
                 {p.display_name || p.name}{!p.enabled ? " (disabled)" : ""}
               </option>
@@ -124,33 +151,39 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
           <input
             className={inputCls}
             value={provider}
-            onChange={(e) => setProvider(e.target.value)}
-            placeholder="e.g. anthropic"
+            onChange={(e) => handleProviderChange(e.target.value)}
+            placeholder="No providers configured — type slug (e.g. anthropic)"
           />
         )}
       </Field>
 
+      {/* Model — combobox: free-type any ID, datalist shows API suggestions */}
       <Field label="Model">
-        {models.length > 0 ? (
-          <select
-            className={inputCls}
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-          >
-            <option value="">Select model…</option>
-            {models.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            className={inputCls}
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-            placeholder="e.g. claude-opus-4-6"
-          />
+        <input
+          className={inputCls}
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          placeholder={
+            loadingModels
+              ? "Loading models…"
+              : models.length > 0
+              ? "Type or select model…"
+              : "e.g. claude-opus-4-6"
+          }
+          list={datalistId}
+          disabled={loadingModels}
+        />
+        <datalist id={datalistId}>
+          {models.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </datalist>
+        {!loadingModels && provider && models.length === 0 && (
+          <p className="text-gray-500 text-xs mt-1">
+            Provider doesn&apos;t list models — type the model ID manually.
+          </p>
         )}
       </Field>
 
