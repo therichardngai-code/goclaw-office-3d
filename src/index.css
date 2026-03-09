@@ -1,0 +1,38 @@
+@import "tailwindcss";
+
+:root {
+  --color-idle: #334466;
+  --color-telegram: #2aabee;
+  --color-discord: #5865f2;
+  --color-whatsapp: #25d366;
+  --color-feishu: #00b0f0;
+  --color-zalo: #ff3333;
+  --color-direct: #ff6600;
+  --color-team: #ffd700;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #e0e0e0;
+}
+
+/* CSS2D label styling */
+.agent-label {
+  background: rgba(0, 0, 0, 0.75);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.speech-bubble {
+  background: rgba(30, 30, 40, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  max-width: 200px;
+  word-wrap: break-word;
+  pointer-events: none;
+}
