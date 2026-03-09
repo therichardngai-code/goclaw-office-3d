@@ -384,8 +384,10 @@ export class OfficeStateMachine {
   // ── Agent summoning ────────────────────────────────────────────────────────────
 
   private handleAgentSummoning(payload: unknown): void {
-    // Summoner broadcasts { type, agent_id } — use agent_id as key
-    const p = payload as { agent_id?: string; display_name?: string };
+    // Summoner broadcasts { type, agent_id } — only act on non-failure events
+    const p = payload as { type?: string; agent_id?: string; display_name?: string };
+    // Skip failed/error summonings — agent was never created
+    if (p.type === "failed" || p.type === "error") return;
     const key = p.agent_id;
     if (!key || this.agents[key]) return;
     this.agents[key] = {
