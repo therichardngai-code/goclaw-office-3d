@@ -36,7 +36,11 @@ function buildMergedAgents(
   const dedupedAgents = Array.from(dedupedByKey.values());
 
   for (const api of dedupedAgents) {
-    const liveAgent = live[api.id];
+    // Try UUID match first; fall back to name match (machine may key by agent_key
+    // string instead of UUID when the agent was created via summoning event).
+    const liveAgent =
+      live[api.id] ??
+      Object.values(live).find((a) => a.name === api.agent_key);
     const ci = charIdx(api.agent_key);
     merged[api.id] = {
       id: api.id,
