@@ -22,6 +22,9 @@ export class OfficeScene {
   private arcMgr: DelegationArcManager | null = null;
 
   private layoutDirty = false;
+  private clickHandler: ((agent: OfficeAgent) => void) | null = null;
+  private raycaster = new THREE.Raycaster();
+  private mouse = new THREE.Vector2();
 
   init(container: HTMLDivElement): void {
     // WebGL Renderer — let Three.js create its own canvas (matches original renderer)
@@ -87,6 +90,9 @@ export class OfficeScene {
 
     // Handle resize
     window.addEventListener("resize", this.handleResize);
+
+    // Raycast click on character bodies
+    this.renderer.domElement.addEventListener("click", this.handleCanvasClick);
 
     // Start render loop
     this.animate();
@@ -240,8 +246,21 @@ export class OfficeScene {
   }
 
   setClickHandler(handler: (agent: OfficeAgent) => void): void {
+    this.clickHandler = handler;
     this.charMgr?.setClickHandler(handler);
   }
+
+  private handleCanvasClick = (e: MouseEvent): void => {
+    if (!this.renderer || !this.camCtrl || !this.charMgr || !this.clickHandler) return;
+
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+    this.raycaster.setFromCamera(this.mouse, this.camCtrl.camera);
+    const agent = this.charMgr.raycastAgents(this.raycaster);
+    if (agent) this.clickHandler(agent);
+  };
 
   // Camera control methods (called from React)
   zoomIn(): void {
@@ -268,6 +287,7 @@ export class OfficeScene {
 
   dispose(): void {
     window.removeEventListener("resize", this.handleResize);
+    this.renderer?.domElement.removeEventListener("click", this.handleCanvasClick);
 
     if (this.animationId !== null) {
       cancelAnimationFrame(this.animationId);

@@ -524,6 +524,28 @@ export class CharacterManager {
     this.map.delete(id);
   }
 
+  // Raycast all character meshes and return the agent that was hit, if any.
+  // Called from OfficeScene on canvas click so users can click the 3D body directly.
+  raycastAgents(raycaster: THREE.Raycaster): OfficeAgent | null {
+    const objectToAgent = new Map<THREE.Object3D, OfficeAgent>();
+    const targets: THREE.Object3D[] = [];
+
+    for (const [, data] of this.map) {
+      data.group.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          objectToAgent.set(child, data.data);
+          targets.push(child);
+        }
+      });
+    }
+
+    const hits = raycaster.intersectObjects(targets, false);
+    if (hits.length > 0 && hits[0]) {
+      return objectToAgent.get(hits[0].object) ?? null;
+    }
+    return null;
+  }
+
   pos(id: string): THREE.Vector3 | null {
     return this.map.get(id)?.group.position.clone() ?? null;
   }
