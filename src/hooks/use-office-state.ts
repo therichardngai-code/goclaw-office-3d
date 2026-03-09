@@ -11,6 +11,7 @@ export function useOfficeState(token: string): void {
   const setSnapshot = useOfficeStore((s) => s.setSnapshot);
   const setConnected = useOfficeStore((s) => s.setConnected);
   const setMachine = useOfficeStore((s) => s.setMachine);
+  const removeApiAgent = useOfficeStore((s) => s.removeApiAgent);
 
   const clientRef = useRef<OfficeWsClient | null>(null);
   const machineRef = useRef<OfficeStateMachine>(new OfficeStateMachine());
@@ -39,6 +40,14 @@ export function useOfficeState(token: string): void {
     // Every WS event → update state machine → debounced snapshot push
     const unsub = client.onNamed((name, payload) => {
       machine.handleEvent(name, payload);
+      // Evict failed-summoning agents from the REST cache immediately so
+      // buildMergedAgents doesn't resurrect them from the stale apiAgents list.
+      if (name === "agent.summoning") {
+        const p = payload as { type?: string; agent_id?: string };
+        if ((p.type === "failed" || p.type === "error") && p.agent_id) {
+          removeApiAgent(p.agent_id);
+        }
+      }
       schedule();
     });
 
