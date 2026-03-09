@@ -102,6 +102,7 @@ interface OfficeStore {
   setConnected: (c: boolean) => void;
   setSnapshot: (s: OfficeSnapshot) => void;
   setApiAgents: (agents: AgentRecord[]) => void;
+  setChannelInstances: (instances: { name: string; channel_type: string }[]) => void;
   setMachine: (m: OfficeStateMachine) => void;
   addLocalNotification: (n: Notification) => void;
   clearLocalNotifications: () => void;
@@ -132,6 +133,10 @@ export const useOfficeStore = create<OfficeStore>((set, get) => ({
     set({ snapshot, mergedSnapshot: applyMerge(snapshot, apiAgents) });
   },
   setMachine: (machine) => set({ machine }),
+  setChannelInstances: (instances) => {
+    const { machine } = get();
+    if (machine) machine.seedChannels(instances);
+  },
   setApiAgents: (apiAgents) => {
     const { snapshot, machine } = get();
     // Seed the state machine so WS-only agents are enriched with REST data

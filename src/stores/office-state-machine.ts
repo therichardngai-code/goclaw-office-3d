@@ -20,12 +20,21 @@ export class OfficeStateMachine {
   private teams: Record<string, OfficeTeam> = {};
   private delegations: OfficeDelegation[] = [];
   private agentLinks: OfficeAgentLink[] = [];
+  // channel instance name (lowercase) → channel type (e.g. "my-telegram-bot" → "telegram")
+  private channelTypeMap = new Map<string, string>();
   private tasks: Record<string, OfficeTask> = {};
   private notifications: Notification[] = [];
   private eventCount = 0;
   private readonly startedAt = new Date().toISOString();
 
   // ── Seed ────────────────────────────────────────────────────────────────────
+
+  // Seed channel instance name → channel type lookup from REST /v1/channels/instances
+  seedChannels(instances: { name: string; channel_type: string }[]): void {
+    for (const inst of instances) {
+      this.channelTypeMap.set(inst.name.toLowerCase(), inst.channel_type.toLowerCase());
+    }
+  }
 
   // Enrich state with REST /v1/agents data (display names, models, etc.)
   seedAgents(
@@ -108,7 +117,10 @@ export class OfficeStateMachine {
         agent.speechBubble = "Processing...";
         agent.lastActiveAt = new Date().toISOString();
         if (p.channel) {
-          agent.currentChannel = normalizeChannelType(p.channel);
+          // Prefer exact lookup (channel instance name → type) over substring guess.
+          // AgentEvent.Channel = instance name (e.g. "my-telegram-bot"), not the type.
+          const mapped = this.channelTypeMap.get(p.channel.toLowerCase());
+          agent.currentChannel = mapped ?? normalizeChannelType(p.channel);
         }
         this.addNotification("run.started", id, `${agent.displayName ?? id} started`);
         break;
