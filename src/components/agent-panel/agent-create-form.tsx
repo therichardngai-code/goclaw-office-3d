@@ -42,10 +42,10 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
   }, []);
 
   useEffect(() => {
-    // provider state holds p.name (slug), look up by name to get the UUID for the API call
+    // provider state holds p.name (slug), look up by name to get UUID + provider_type
     const found = providers.find((p) => p.name === provider);
     if (found) {
-      fetchProviderModels(found.id).then(setModels);
+      fetchProviderModels(found.id, found.provider_type).then(setModels);
     } else {
       setModels([]);
     }
@@ -116,7 +116,7 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
             {providers.map((p) => (
               // value = p.name (slug) — this is what createAgent sends as "provider"
               <option key={p.id} value={p.name}>
-                {p.display_name || p.name}
+                {p.display_name || p.name}{!p.enabled ? " (disabled)" : ""}
               </option>
             ))}
           </select>

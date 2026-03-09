@@ -11,8 +11,18 @@ export interface Provider {
   id: string;            // UUID — used only for /v1/providers/{id}/models
   name: string;          // slug (e.g. "minimax-native") — sent to createAgent as provider
   display_name?: string; // human-readable label for UI (e.g. "MiniMax Native")
+  provider_type: string; // e.g. "anthropic_native", "minimax_native", "chatgpt_oauth", "claude_cli"
   enabled: boolean;
 }
+
+// Hardcoded model list for ChatGPT OAuth — token lacks api.model.read scope
+const CHATGPT_OAUTH_MODELS: ProviderModel[] = [
+  { id: "gpt-5.3-codex", name: "GPT-5.3 Codex" },
+  { id: "gpt-5.2-codex", name: "GPT-5.2 Codex" },
+  { id: "gpt-5.2", name: "GPT-5.2" },
+  { id: "gpt-5.1-codex", name: "GPT-5.1 Codex" },
+  { id: "gpt-5.1", name: "GPT-5.1" },
+];
 
 export interface ChannelInstance {
   id: string;
@@ -36,7 +46,9 @@ export async function fetchProviders(): Promise<Provider[]> {
     const res = await fetch(apiURL("/v1/providers"), { headers: getHeaders() });
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.providers ?? []).filter((p: Provider) => p.enabled);
+    // Return ALL configured providers so users can pick any, not just enabled ones.
+    // Disabled providers still have valid slugs and the agent runtime may accept them.
+    return data.providers ?? [];
   } catch {
     return [];
   }
@@ -47,16 +59,20 @@ export interface ProviderModel {
   name: string; // Display label shown in dropdown (e.g. "MiniMax M2.5")
 }
 
-export async function fetchProviderModels(providerId: string): Promise<ProviderModel[]> {
+export async function fetchProviderModels(
+  providerId: string,
+  providerType?: string
+): Promise<ProviderModel[]> {
+  // ChatGPT OAuth token lacks api.model.read scope — use hardcoded list
+  if (providerType === "chatgpt_oauth") {
+    return CHATGPT_OAUTH_MODELS;
+  }
   try {
     const res = await fetch(apiURL(`/v1/providers/${providerId}/models`), {
       headers: getHeaders(),
     });
     if (!res.ok) return [];
     const data = await res.json();
-    // Return id (API identifier) + name (display label).
-    // Previously returned m.name which is a human-readable display string —
-    // goclaw's summoner requires the model id, not the display name.
     return (data.models ?? []).map((m: { id: string; name: string }) => ({
       id: m.id,
       name: m.name ?? m.id,
