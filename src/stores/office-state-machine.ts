@@ -28,6 +28,9 @@ export class OfficeStateMachine {
   private notifications: Notification[] = [];
   private eventCount = 0;
   private readonly startedAt = new Date().toISOString();
+  // Set before each dispatch so addNotification can attach raw payload without touching all call sites
+  private currentEventName = "";
+  private currentEventPayload: unknown = null;
 
   // ── Seed ────────────────────────────────────────────────────────────────────
 
@@ -105,6 +108,9 @@ export class OfficeStateMachine {
 
   handleEvent(name: string, payload: unknown): void {
     this.eventCount++;
+    // Capture context so addNotification can attach raw data automatically
+    this.currentEventName = name;
+    this.currentEventPayload = payload;
 
     switch (name) {
       case "agent":                   return this.handleAgentEvent(payload);
@@ -559,6 +565,8 @@ export class OfficeStateMachine {
         type,
         message,
         timestamp: new Date().toISOString(),
+        rawEventName: this.currentEventName,
+        rawPayload: this.currentEventPayload,
       },
     ];
   }

@@ -82,6 +82,8 @@ export interface Notification {
   type: string;
   message: string;
   timestamp: string;
+  rawEventName?: string;  // original WS event name (e.g. "delegation.started")
+  rawPayload?: unknown;   // original WS event payload for detail view
 }
 
 export interface OfficeSnapshot {

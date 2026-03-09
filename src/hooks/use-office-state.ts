@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { OfficeWsClient } from "@/api/ws-client";
 import { OfficeStateMachine } from "@/stores/office-state-machine";
 import { useOfficeStore } from "@/stores/use-office-store";
+import { useEventStore } from "@/stores/use-event-store";
 import { fetchAllAgents } from "@/api/agent-api";
 
 // Coalesce rapid WS bursts — LLM token chunks fire at 20-50 Hz.
@@ -42,6 +43,8 @@ export function useOfficeState(token: string): void {
 
     // Every WS event → update state machine → debounced snapshot push
     const unsub = client.onNamed((name, payload) => {
+      // Capture every raw event in event store for the "Events" tab
+      useEventStore.getState().addEvent(name, payload);
       machine.handleEvent(name, payload);
 
       if (name === "agent.summoning") {
