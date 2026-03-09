@@ -58,8 +58,12 @@ function buildMergedAgents(
   // Skip loser UUIDs: stale duplicates of the same agent_key that were not
   // selected by dedup above. Without this, the stale UUID re-enters as a
   // second character in the scene even though dedup already excluded it.
+  // Also skip agents whose name (agent_key) is already covered by a REST-merged
+  // entry — catches summoning-keyed agents (keyed by agent_key string, not UUID)
+  // that would otherwise duplicate a UUID-keyed REST agent with the same name.
+  const mergedNames = new Set(Object.values(merged).map((a) => a.name));
   for (const [id, agent] of Object.entries(live)) {
-    if (!merged[id] && !loserIds.has(id)) {
+    if (!merged[id] && !loserIds.has(id) && !mergedNames.has(agent.name)) {
       merged[id] = { ...agent, characterIndex: charIdx(agent.name) };
     }
   }
