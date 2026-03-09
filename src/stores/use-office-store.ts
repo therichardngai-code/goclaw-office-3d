@@ -152,9 +152,13 @@ export const useOfficeStore = create<OfficeStore>((set, get) => ({
     set({ apiAgents, mergedSnapshot: applyMerge(snapshot, apiAgents) });
   },
   removeApiAgent: (id) => {
-    const { snapshot, apiAgents } = get();
+    const { machine, apiAgents } = get();
     const updated = apiAgents.filter((a) => a.id !== id);
-    set({ apiAgents: updated, mergedSnapshot: applyMerge(snapshot, updated) });
+    // Use machine.snapshot() (fresh — deletion already applied) not get().snapshot
+    // (stale — debounced 150ms behind). Without this the SSE loop in applyMerge
+    // re-adds the deleted agent for one cycle from the stale snapshot.agents.
+    const freshSnapshot = machine?.snapshot() ?? null;
+    set({ apiAgents: updated, mergedSnapshot: applyMerge(freshSnapshot, updated) });
   },
   addLocalNotification: (n) =>
     set((state) => ({
