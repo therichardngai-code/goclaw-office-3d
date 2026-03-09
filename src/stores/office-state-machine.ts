@@ -100,10 +100,13 @@ export class OfficeStateMachine {
       case "team.task.claimed":       return this.handleTask(payload, "claimed");
       case "team.task.completed":     return this.handleTask(payload, "completed");
       case "team.task.cancelled":     return this.handleTask(payload, "cancelled");
-      case "agent_link.created":      return this.handleAgentLink(payload, "upsert");
-      case "agent_link.updated":      return this.handleAgentLink(payload, "upsert");
-      case "agent_link.deleted":      return this.handleAgentLink(payload, "delete");
-      case "agent.summoning":         return this.handleAgentSummoning(payload);
+      case "agent_link.created":            return this.handleAgentLink(payload, "upsert");
+      case "agent_link.updated":            return this.handleAgentLink(payload, "upsert");
+      case "agent_link.deleted":            return this.handleAgentLink(payload, "delete");
+      case "agent.summoning":               return this.handleAgentSummoning(payload);
+      case "delegation.announce":           return this.handleDelegationAnnounce(payload);
+      case "delegation.quality_gate.retry": return this.handleQualityGateRetry(payload);
+      case "team.message.sent":             return this.handleTeamMessage(payload);
       // health / handoff — no visual update needed
     }
   }
@@ -157,6 +160,11 @@ export class OfficeStateMachine {
         agent.currentChannel = undefined;
         agent.speechBubble = undefined;
         this.addNotification("run.failed", id, `${agent.displayName ?? id} failed`);
+        break;
+
+      case "block.reply":
+        agent.state = "idle";
+        agent.speechBubble = undefined;
         break;
 
       case "run.retrying":
@@ -229,13 +237,20 @@ export class OfficeStateMachine {
     ];
 
     // Speech bubbles on both ends
-    if (p.source_agent_key && this.agents[p.source_agent_key]) {
-      this.agents[p.source_agent_key]!.speechBubble =
+    const srcId = this.keyToId.get(p.source_agent_key ?? "") ?? p.source_agent_key ?? "";
+    const tgtId = this.keyToId.get(p.target_agent_key ?? "") ?? p.target_agent_key ?? "";
+    if (srcId && this.agents[srcId]) {
+      this.agents[srcId]!.speechBubble =
         `→ Briefing ${p.target_display_name ?? p.target_agent_key}...`;
     }
-    if (p.target_agent_key && this.agents[p.target_agent_key]) {
-      this.agents[p.target_agent_key]!.speechBubble = "← Receiving task...";
+    if (tgtId && this.agents[tgtId]) {
+      this.agents[tgtId]!.speechBubble = "← Receiving task...";
     }
+
+    const src = p.source_display_name ?? p.source_agent_key ?? "?";
+    const tgt = p.target_display_name ?? p.target_agent_key ?? "?";
+    const task = p.task ? `: ${p.task.slice(0, 60)}` : "";
+    this.addNotification("delegation", srcId, `${src} → ${tgt}${task}`);
   }
 
   private handleDelegationTerminal(payload: unknown, status: string): void {
@@ -291,6 +306,9 @@ export class OfficeStateMachine {
       leadDisplayName: p.lead_display_name,
       members: [],
     };
+    const teamName = p.team_name ?? p.team_id;
+    const lead = p.lead_display_name ?? p.lead_agent_key ?? "";
+    this.addNotification("team", p.team_id, `Team "${teamName}" created${lead ? ` — lead: ${lead}` : ""}`);
   }
 
   private handleTeamUpdated(payload: unknown): void {
@@ -310,7 +328,12 @@ export class OfficeStateMachine {
 
   private handleTeamMember(payload: unknown, action: "add" | "remove"): void {
     // TeamMemberAddedPayload / TeamMemberRemovedPayload use snake_case
-    const p = payload as { team_id?: string; agent_key?: string };
+    const p = payload as {
+      team_id?: string;
+      team_name?: string;
+      agent_key?: string;
+      display_name?: string;
+    };
     if (!p.team_id || !this.teams[p.team_id] || !p.agent_key) return;
     const team = this.teams[p.team_id]!;
     if (action === "add") {
@@ -320,6 +343,10 @@ export class OfficeStateMachine {
     } else {
       team.members = team.members.filter((m) => m !== p.agent_key);
     }
+    const who = p.display_name ?? p.agent_key;
+    const tName = p.team_name ?? team.name;
+    const verb = action === "add" ? "joined" : "left";
+    this.addNotification("team", p.team_id, `${who} ${verb} team "${tName}"`);
   }
 
   // ── Task events ───────────────────────────────────────────────────────────────
@@ -346,6 +373,10 @@ export class OfficeStateMachine {
       reason: p.reason,
       timestamp: new Date().toISOString(),
     };
+    const owner = p.owner_display_name ?? p.owner_agent_key;
+    const subject = p.subject ? `"${p.subject.slice(0, 50)}"` : "task";
+    const ownerStr = owner ? ` (${owner})` : "";
+    this.addNotification("team.task", p.team_id ?? "", `Task ${action}: ${subject}${ownerStr}`);
   }
 
   // ── Agent link events ──────────────────────────────────────────────────────────
@@ -386,19 +417,75 @@ export class OfficeStateMachine {
   private handleAgentSummoning(payload: unknown): void {
     // Summoner broadcasts { type, agent_id } — only act on non-failure events
     const p = payload as { type?: string; agent_id?: string; display_name?: string };
+    const label = p.display_name ?? p.agent_id ?? "agent";
+
     if (p.type === "failed" || p.type === "error") {
       // Agent creation failed — remove any entry added by the prior "started" event.
-      // REST-seeded agents are never created by summoning, so this is safe to delete.
-      // If the agent legitimately exists in REST, the next poll will restore it.
       if (p.agent_id) delete this.agents[p.agent_id];
+      this.addNotification("agent.summoning", p.agent_id ?? "", `Summoning failed: ${label}`);
       return;
     }
+
+    if (p.type === "started") {
+      this.addNotification("agent.summoning", p.agent_id ?? "", `Summoning ${label}...`);
+    } else if (p.type === "completed") {
+      this.addNotification("agent.summoning", p.agent_id ?? "", `${label} joined the office`);
+    }
+
     const key = p.agent_id;
     if (!key || this.agents[key]) return;
     this.agents[key] = {
       ...this.newAgent(key),
-      displayName: p.display_name ?? key,
+      displayName: label,
     };
+  }
+
+  // ── Delegation announce / quality gate ────────────────────────────────────────
+
+  private handleDelegationAnnounce(payload: unknown): void {
+    const p = payload as {
+      source_agent_key?: string;
+      source_display_name?: string;
+      results?: Array<{ agent_key?: string; display_name?: string }>;
+      total_elapsed_ms?: number;
+    };
+    const src = p.source_display_name ?? p.source_agent_key ?? "?";
+    const count = p.results?.length ?? 0;
+    const ms = p.total_elapsed_ms ? ` in ${(p.total_elapsed_ms / 1000).toFixed(1)}s` : "";
+    const srcId = this.keyToId.get(p.source_agent_key ?? "") ?? p.source_agent_key ?? "";
+    this.addNotification("delegation", srcId, `${src}: all ${count} sub-tasks done${ms}`);
+  }
+
+  private handleQualityGateRetry(payload: unknown): void {
+    const p = payload as {
+      target_agent_key?: string;
+      gate_type?: string;
+      attempt?: number;
+      max_retries?: number;
+    };
+    const tgt = p.target_agent_key ?? "?";
+    const tgtId = this.keyToId.get(tgt) ?? tgt;
+    this.addNotification(
+      "delegation",
+      tgtId,
+      `Quality gate retry ${p.attempt ?? 1}/${p.max_retries ?? "?"}: ${tgt}`
+    );
+  }
+
+  private handleTeamMessage(payload: unknown): void {
+    const p = payload as {
+      from_agent_key?: string;
+      from_display_name?: string;
+      to_agent_key?: string;
+      to_display_name?: string;
+      preview?: string;
+      message_type?: string;
+    };
+    const from = p.from_display_name ?? p.from_agent_key ?? "?";
+    const to = p.to_display_name ?? p.to_agent_key ?? "?";
+    const preview = p.preview ? `: ${p.preview.slice(0, 60)}` : "";
+    const fromId = this.keyToId.get(p.from_agent_key ?? "") ?? p.from_agent_key ?? "";
+    this.addNotification("team.message", fromId, `${from} → ${to}${preview}`);
   }
 
   // ── Snapshot ──────────────────────────────────────────────────────────────────

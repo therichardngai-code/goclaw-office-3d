@@ -68,14 +68,17 @@ export function normalizeChannelType(ch: string): string {
 
 // Resolve platform key for an agent
 export function resolvePlatform(
-  agent: { id: string; state: string; currentChannel?: string } | null,
+  agent: { id: string; name?: string; state: string; currentChannel?: string } | null,
   teams: Record<string, { leadId?: string; members?: string[] }>
 ): string {
   if (!agent) return "idle";
 
-  // Team leads and members always belong to their team zone
+  // Teams store agent_key strings (from WS lead_agent_key / agent_key fields).
+  // Merged snapshot agents use UUID as id but agent_key as name — match by name.
+  const agentKey = agent.name ?? agent.id;
+
   for (const [tid, team] of Object.entries(teams)) {
-    if (team.leadId === agent.id || team.members?.includes(agent.id)) {
+    if (team.leadId === agentKey || team.members?.includes(agentKey)) {
       return `team:${tid}`;
     }
   }

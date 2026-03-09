@@ -3,10 +3,13 @@ import { useOfficeStore } from "@/stores/use-office-store";
 const TYPE_COLORS: Record<string, string> = {
   delegation: "text-purple-400",
   team: "text-yellow-400",
+  "team.task": "text-yellow-300",
+  "team.message": "text-amber-400",
   "run.started": "text-green-400",
   "run.completed": "text-green-400",
   "run.failed": "text-red-400",
   "tool.call": "text-orange-400",
+  "agent.summoning": "text-blue-300",
   agent_link: "text-cyan-400",
   agent: "text-blue-400",
   handoff: "text-orange-400",
