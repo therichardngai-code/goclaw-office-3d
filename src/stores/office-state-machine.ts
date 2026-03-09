@@ -38,6 +38,29 @@ export class OfficeStateMachine {
     }
   }
 
+  // Seed full member list for a team after teams.get RPC response.
+  // Called after team.created when we need the complete member list
+  // (team.created payload only includes lead; no team.member.added events fire for initial members).
+  seedTeamMembers(
+    teamId: string,
+    members: Array<{ agent_key?: string; display_name?: string; role?: string }>
+  ): void {
+    const team = this.teams[teamId];
+    if (!team) return;
+    for (const m of members) {
+      if (!m.agent_key) continue;
+      if (!team.members.includes(m.agent_key)) {
+        team.members = [...team.members, m.agent_key];
+      }
+      // Ensure leadId is set correctly (role = "lead")
+      const role = (m.role ?? "").toLowerCase();
+      if (role === "lead" && team.leadId !== m.agent_key) {
+        team.leadId = m.agent_key;
+        if (m.display_name) team.leadDisplayName = m.display_name;
+      }
+    }
+  }
+
   // Enrich state with REST /v1/agents data (display names, models, etc.)
   seedAgents(
     apiAgents: {

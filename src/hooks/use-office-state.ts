@@ -55,6 +55,25 @@ export function useOfficeState(token: string): void {
         }
       }
 
+      // team.created only includes lead_agent_key — initial members are NOT
+      // sent as team.member.added events. Fetch full member list via teams.get.
+      if (name === "team.created") {
+        const p = payload as { team_id?: string };
+        if (p.team_id) {
+          client.call("teams.get", { teamId: p.team_id })
+            .then((res) => {
+              const r = res as {
+                members?: Array<{ agent_key?: string; display_name?: string; role?: string }>;
+              };
+              if (r.members) {
+                machine.seedTeamMembers(p.team_id!, r.members);
+                schedule();
+              }
+            })
+            .catch(() => {});
+        }
+      }
+
       // cache.invalidate kind=agent → refresh agent list so newly created/deleted
       // agents appear without waiting for the 30s poll
       if (name === "cache.invalidate") {

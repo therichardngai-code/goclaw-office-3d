@@ -10,6 +10,12 @@ interface WsFrame {
   payload?: unknown;
 }
 
+interface PendingCall {
+  resolve: (value: unknown) => void;
+  reject: (err: Error) => void;
+  timeout: ReturnType<typeof setTimeout>;
+}
+
 export class OfficeWsClient {
   private ws: WebSocket | null = null;
   private token = "";
@@ -23,6 +29,9 @@ export class OfficeWsClient {
 
   // handlers that receive (name, payload) — used by state machine
   private namedHandlers = new Set<(name: string, payload: unknown) => void>();
+
+  // pending RPC calls — id → resolve/reject
+  private pendingCalls = new Map<string, PendingCall>();
 
   private onConnectedCb?: () => void;
   private onDisconnectedCb?: () => void;
@@ -87,6 +96,19 @@ export class OfficeWsClient {
   }
 
   private handleFrame(frame: WsFrame): void {
+    // RPC response — route to pending call if one exists
+    if (frame.type === "res" && frame.id && this.pendingCalls.has(frame.id)) {
+      const pending = this.pendingCalls.get(frame.id)!;
+      clearTimeout(pending.timeout);
+      this.pendingCalls.delete(frame.id);
+      if (frame.ok) {
+        pending.resolve(frame.payload);
+      } else {
+        pending.reject(new Error(String(frame.payload ?? "rpc error")));
+      }
+      return;
+    }
+
     if (frame.type === "res" && frame.ok) {
       // Connect handshake succeeded — reset backoff
       this.connected = true;
@@ -124,8 +146,32 @@ export class OfficeWsClient {
     return () => this.namedHandlers.delete(handler);
   }
 
+  // Make an RPC call and return the response payload.
+  // Rejects if the server returns an error or after 10s timeout.
+  call(method: string, params: unknown): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      if (!this.ws || !this.connected) {
+        reject(new Error("not connected"));
+        return;
+      }
+      const id = crypto.randomUUID();
+      const timeout = setTimeout(() => {
+        this.pendingCalls.delete(id);
+        reject(new Error("rpc timeout"));
+      }, 10_000);
+      this.pendingCalls.set(id, { resolve, reject, timeout });
+      this.ws.send(JSON.stringify({ type: "req", id, method, params }));
+    });
+  }
+
   disconnect(): void {
     this.stopped = true;
+    // Reject all pending calls
+    for (const [, pending] of this.pendingCalls) {
+      clearTimeout(pending.timeout);
+      pending.reject(new Error("disconnected"));
+    }
+    this.pendingCalls.clear();
     this.ws?.close();
     this.ws = null;
   }
