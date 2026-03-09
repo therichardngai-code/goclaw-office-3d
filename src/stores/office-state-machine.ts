@@ -386,8 +386,13 @@ export class OfficeStateMachine {
   private handleAgentSummoning(payload: unknown): void {
     // Summoner broadcasts { type, agent_id } — only act on non-failure events
     const p = payload as { type?: string; agent_id?: string; display_name?: string };
-    // Skip failed/error summonings — agent was never created
-    if (p.type === "failed" || p.type === "error") return;
+    if (p.type === "failed" || p.type === "error") {
+      // Agent creation failed — remove any entry added by the prior "started" event.
+      // REST-seeded agents are never created by summoning, so this is safe to delete.
+      // If the agent legitimately exists in REST, the next poll will restore it.
+      if (p.agent_id) delete this.agents[p.agent_id];
+      return;
+    }
     const key = p.agent_id;
     if (!key || this.agents[key]) return;
     this.agents[key] = {
