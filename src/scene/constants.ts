@@ -69,10 +69,10 @@ export const ANIM_GLB: Array<{
   { idle: "anim-female-c-idle",  working: null, talking: null, victory: null, walking: "anim-female-c-walking" },
   // 3 female-d — has: idle, walking
   { idle: "anim-female-d-idle",  working: null, talking: null, victory: null, walking: "anim-female-d-walking" },
-  // 4 female-e — no animated GLBs; uses static mesh
-  { idle: null, working: null, talking: null, victory: null, walking: null },
-  // 5 female-f — no animated GLBs; uses static mesh
-  { idle: null, working: null, talking: null, victory: null, walking: null },
+  // 4 female-e — no own animated GLBs; share female-d (same rig)
+  { idle: "anim-female-d-idle", working: null, talking: null, victory: null, walking: "anim-female-d-walking" },
+  // 5 female-f — no own animated GLBs; share female-a (same rig)
+  { idle: "anim-female-a-idle", working: null, talking: "anim-female-a-talking", victory: null, walking: "anim-female-a-walking" },
   // 6 male-a — has: idle, walking
   { idle: "anim-male-a-idle",    working: null, talking: null, victory: null, walking: "anim-male-a-walking" },
   // 7 male-b — has: idle, walking
