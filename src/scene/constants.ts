@@ -28,21 +28,25 @@ export const CHAN_ICON: Record<string, string> = {
   idle: "H",
 };
 
+// Note: female-e and female-f have no own animated GLBs.
+// They share animations: female-e→female-d, female-f→female-a (see ANIM_GLB below).
+// CHAR_MODELS must use the same base character as the animated GLB so the
+// card preview (static) and the 3D scene (animated) show the same character.
 export const CHAR_MODELS = [
-  "character-female-a",
-  "character-female-b",
-  "character-female-c",
-  "character-female-d",
-  "character-female-e",
-  "character-female-f",
-  "character-male-a",
-  "character-male-b",
-  "character-male-c",
-  "character-male-d",
-  "character-male-e",
-  "character-male-f",
-  "character-employee",
-  "character-gamer",
+  "character-female-a",  // 0
+  "character-female-b",  // 1
+  "character-female-c",  // 2
+  "character-female-d",  // 3
+  "character-female-d",  // 4 female-e slot → shares female-d anim → show female-d
+  "character-female-a",  // 5 female-f slot → shares female-a anim → show female-a
+  "character-male-a",    // 6
+  "character-male-b",    // 7
+  "character-male-c",    // 8
+  "character-male-d",    // 9
+  "character-male-e",    // 10
+  "character-male-f",    // 11
+  "character-employee",  // 12
+  "character-gamer",     // 13
 ];
 
 // Per-character animated GLB names.
