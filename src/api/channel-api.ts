@@ -12,6 +12,7 @@ export interface CreateChannelInstanceInput {
   channel_type: string;
   agent_id: string;
   credentials?: Record<string, string>;
+  config?: Record<string, unknown>;  // approval rules, behaviour settings
   enabled: boolean;
 }
 
