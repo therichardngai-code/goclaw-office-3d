@@ -59,10 +59,15 @@ export class CharacterManager {
   private scene: THREE.Scene;
   private loader: AssetLoader;
   private map = new Map<string, AgentData>();
+  private onAgentClick: ((agent: OfficeAgent) => void) | null = null;
 
   constructor(scene: THREE.Scene, loader: AssetLoader) {
     this.scene = scene;
     this.loader = loader;
+  }
+
+  setClickHandler(handler: (agent: OfficeAgent) => void): void {
+    this.onAgentClick = handler;
   }
 
   update(id: string, data: OfficeAgent): void {
@@ -169,6 +174,13 @@ export class CharacterManager {
     nameDiv.style.whiteSpace = "nowrap";
     nameDiv.style.letterSpacing = "0.04em";
     nameDiv.style.textShadow = "0 0 8px #39ff14, 0 0 2px #000";
+    nameDiv.style.pointerEvents = "auto";
+    nameDiv.style.cursor = "pointer";
+    nameDiv.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const agentData = this.map.get(id);
+      if (agentData) this.onAgentClick?.(agentData.data);
+    });
 
     const dotSpan = document.createElement("div");
     dotSpan.className = "status-dot";

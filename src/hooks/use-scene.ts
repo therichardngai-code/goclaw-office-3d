@@ -17,6 +17,11 @@ export function useScene(containerRef: RefObject<HTMLDivElement | null>): void {
     sceneRef.current = scene;
     globalScene = scene;
 
+    // Wire agent click → store so <AgentChatPanel> can react
+    scene.setClickHandler((agent) => {
+      useOfficeStore.getState().setSelectedAgent(agent);
+    });
+
     return () => {
       scene.dispose();
       sceneRef.current = null;

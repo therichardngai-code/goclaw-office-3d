@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
-import type { OfficeSnapshot } from "@/api/types";
+import type { OfficeSnapshot, OfficeAgent } from "@/api/types";
 import { AssetLoader } from "./asset-loader";
 import { CameraController } from "./camera-controller";
 import { PlatformManager } from "./platform-manager";
@@ -237,6 +237,10 @@ export class OfficeScene {
       (id) => this.charMgr!.pos(id),
       this.charMgr
     );
+  }
+
+  setClickHandler(handler: (agent: OfficeAgent) => void): void {
+    this.charMgr?.setClickHandler(handler);
   }
 
   // Camera control methods (called from React)

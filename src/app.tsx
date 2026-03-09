@@ -8,6 +8,7 @@ import { ReconnectBanner } from "./components/reconnect-banner";
 import { NotificationPanel } from "./components/notification-panel";
 import { CameraControls } from "./components/camera-controls";
 import { AgentPanel } from "./components/agent-panel/agent-panel";
+import { AgentChatPanel } from "./components/agent-chat-panel";
 import { useApiAgents } from "./hooks/use-api-agents";
 
 export function App() {
@@ -30,6 +31,7 @@ export function App() {
           <ReconnectBanner />
           <NotificationPanel />
           <AgentPanel />
+          <AgentChatPanel />
           <CameraControls />
         </>
       )}
