@@ -99,10 +99,11 @@ export const ANIM_GLB: Array<{
 export const HOME_SLOT_Y = 1.0;  // upper deck of space-station
 export const DEFAULT_SLOT_Y = 0.15;
 
-// Platform room Y rotation (radians) — camera sits at PI/4 (45°) from +Z toward +X
-// Tune these so each room's entrance faces the camera (+X world direction)
-export const HOME_ROTATION_Y = Math.PI / 2;      // space-station — entrance faces +X ✓
-export const ROOM_ROTATION_Y = Math.PI / 2;      // arcade-full / mini-market-full — same facing
+// Platform room Y rotation (radians) — camera sits at PI/4 (45°) from +Z toward +X.
+// Space-station entrance is on local +Z face → π/2 rotates it to face world +X ✓
+// Arcade/mini-market entrance is on local +X face → 0 keeps it facing world +X ✓
+export const HOME_ROTATION_Y = Math.PI / 2;      // space-station
+export const ROOM_ROTATION_Y = 0;                 // arcade-full / mini-market-full
 
 // Movement constants
 export const WALK_SPEED = 0.35;
