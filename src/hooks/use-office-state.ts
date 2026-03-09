@@ -29,6 +29,9 @@ export function useOfficeState(token: string): void {
     // Expose machine to store so seedAgents() is called when REST data arrives
     setMachine(machine);
 
+    // Expose WS call function so chat panel can call chat.send / chat.history
+    useOfficeStore.getState().setWsCall((method, params) => client.call(method, params ?? {}));
+
     // Trailing-edge debounce — coalesces bursts (tool chunks fire at 20-50 Hz)
     const flush = () => {
       setSnapshot(machine.snapshot());
@@ -47,22 +50,25 @@ export function useOfficeState(token: string): void {
       useEventStore.getState().addEvent(name, payload);
       machine.handleEvent(name, payload);
 
-      // Bridge WS run.completed / run.failed → chat panel (announce runs bypass SSE)
-      // agent event payload shape: { type, agentId, runKind?, payload?: { content?, error? } }
+      // Bridge WS agent events → chat panel
+      // agent event payload: { type, agentId, runKind?, payload?: { content?, error? } }
       if (name === "agent") {
         const p = payload as { type?: string; agentId?: string; payload?: unknown };
+        const store = useOfficeStore.getState();
         if (p.agentId) {
-          if (p.type === "run.completed") {
+          if (p.type === "chunk") {
+            // Stream token — high frequency, accumulated in panel via ref
             const inner = p.payload as { content?: string } | null | undefined;
             if (inner?.content) {
-              useOfficeStore.getState().setIncomingChatMessage({ agentKey: p.agentId, content: inner.content });
+              store.setIncomingChatChunk({ agentKey: p.agentId, content: inner.content });
             }
+          } else if (p.type === "run.completed") {
+            // Always fire — content non-empty for announce runs, empty for interactive chat.send runs
+            const inner = p.payload as { content?: string } | null | undefined;
+            store.setIncomingChatMessage({ agentKey: p.agentId, content: inner?.content ?? "" });
           } else if (p.type === "run.failed") {
             const inner = p.payload as { error?: string } | null | undefined;
-            useOfficeStore.getState().setIncomingChatError({
-              agentKey: p.agentId,
-              error: inner?.error ?? "Agent run failed",
-            });
+            store.setIncomingChatError({ agentKey: p.agentId, error: inner?.error ?? "Agent run failed" });
           }
         }
       }
@@ -121,6 +127,7 @@ export function useOfficeState(token: string): void {
 
     return () => {
       if (timerRef.current !== null) clearTimeout(timerRef.current);
+      useOfficeStore.getState().setWsCall(null);
       unsub();
       client.disconnect();
       clientRef.current = null;

@@ -104,9 +104,13 @@ interface OfficeStore {
   agentPanelOpen: boolean;
   machine: OfficeStateMachine | null;
   selectedAgent: OfficeAgent | null;
-  // WS→chat bridge: when agent reply arrives via run.completed WS event (not SSE)
+  // Exposed WS call function — set by use-office-state when client connects
+  wsCall: ((method: string, params?: Record<string, unknown>) => Promise<unknown>) | null;
+  // WS→chat bridge: streaming chunk tokens (LLM output, high-frequency)
+  incomingChatChunk: { agentKey: string; content: string } | null;
+  // WS→chat bridge: run completed — content non-empty for announce runs, empty for interactive
   incomingChatMessage: { agentKey: string; content: string } | null;
-  // WS→chat bridge: when agent run fails via WS run.failed event
+  // WS→chat bridge: run failed error
   incomingChatError: { agentKey: string; error: string } | null;
 
   setToken: (t: string) => void;
@@ -121,6 +125,8 @@ interface OfficeStore {
   toggleNotificationPanel: () => void;
   toggleAgentPanel: () => void;
   setSelectedAgent: (agent: OfficeAgent | null) => void;
+  setWsCall: (fn: ((method: string, params?: Record<string, unknown>) => Promise<unknown>) | null) => void;
+  setIncomingChatChunk: (c: { agentKey: string; content: string } | null) => void;
   setIncomingChatMessage: (m: { agentKey: string; content: string } | null) => void;
   setIncomingChatError: (e: { agentKey: string; error: string } | null) => void;
 }
@@ -138,6 +144,8 @@ export const useOfficeStore = create<OfficeStore>((set, get) => ({
   agentPanelOpen: false,
   machine: null,
   selectedAgent: null,
+  wsCall: null,
+  incomingChatChunk: null,
   incomingChatMessage: null,
   incomingChatError: null,
 
@@ -184,6 +192,8 @@ export const useOfficeStore = create<OfficeStore>((set, get) => ({
   toggleAgentPanel: () =>
     set((state) => ({ agentPanelOpen: !state.agentPanelOpen })),
   setSelectedAgent: (agent) => set({ selectedAgent: agent }),
+  setWsCall: (wsCall) => set({ wsCall }),
+  setIncomingChatChunk: (incomingChatChunk) => set({ incomingChatChunk }),
   setIncomingChatMessage: (incomingChatMessage) => set({ incomingChatMessage }),
   setIncomingChatError: (incomingChatError) => set({ incomingChatError }),
 }));
