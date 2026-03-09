@@ -42,7 +42,8 @@ interface AgentData {
   staticMesh: THREE.Object3D | null;
   animMesh: THREE.Object3D | null;
   mixer: THREE.AnimationMixer | null;
-  animState: string | null;
+  animState: string | null;      // visual animation currently playing
+  logicAnimState: string | null; // logical agent state — used for transition detection
   animGLBName: string | null;
   wanderX: number;
   wanderZ: number;
@@ -50,6 +51,8 @@ interface AgentData {
   wanderTargetZ: number;
   wanderRotY: number;
   talkingWith: string | null;
+  idleWalkTimer: number;   // seconds remaining in idle-pause before next walk
+  isIdleWalking: boolean;  // true while moving in idle wander sub-state
 }
 
 export class CharacterManager {
@@ -117,11 +120,23 @@ export class CharacterManager {
     // Error tilt
     a.group.rotation.z = data.state === "error" ? 0.26 : 0;
 
-    // Trigger anim state update
+    // Trigger anim state update — compare against logicAnimState so idle-wander
+    // sub-states (walking ↔ idle) don't cause spurious transitions.
     const as = toAnimState(data.state, !!data.speechBubble);
-    if (as !== a.animState) {
-      // Play victory when transitioning from active → idle (task complete)
-      const wasActive = a.animState === "working" || a.animState === "talking";
+    if (as !== a.logicAnimState) {
+      const wasActive = a.logicAnimState === "working" || a.logicAnimState === "talking";
+      a.logicAnimState = as;
+
+      if (as !== "idle") {
+        // Going active — stop idle wander immediately
+        a.isIdleWalking = false;
+        a.idleWalkTimer = 0;
+      } else if (wasActive) {
+        // Returning to idle after task — brief pause so victory anim plays fully
+        a.idleWalkTimer = 1.5 + Math.random() * 2;
+      }
+      // else: first call (logicAnimState was null) — keep spawn's stagger timer
+
       if (as === "idle" && wasActive) {
         this.applyAnim(id, "victory");
       } else {
@@ -205,6 +220,7 @@ export class CharacterManager {
       animMesh: null,
       mixer: null,
       animState: null,
+      logicAnimState: null,
       animGLBName: null,
       wanderX: startX,
       wanderZ: startZ,
@@ -212,6 +228,8 @@ export class CharacterManager {
       wanderTargetZ: (Math.random() - 0.5) * 0.8,
       wanderRotY: Math.random() * Math.PI * 2,
       talkingWith: null,
+      idleWalkTimer: Math.random() * 1.5,  // stagger so agents don't all start at once
+      isIdleWalking: false,
     };
 
     this.map.set(id, obj);
@@ -364,7 +382,7 @@ export class CharacterManager {
   }
 
   tick(delta: number, elapsed: number): void {
-    for (const a of this.map.values()) {
+    for (const [id, a] of this.map) {
       if (a.mixer) {
         a.mixer.update(delta);
 
@@ -411,6 +429,45 @@ export class CharacterManager {
 
           a.animMesh.position.set(a.wanderX, 0, a.wanderZ);
           a.animMesh.rotation.set(0, a.wanderRotY, 0);
+        }
+      }
+
+      // Idle wander — agents on home platform walk around naturally
+      if (a.logicAnimState === "idle") {
+        // Count down the pause timer
+        if (a.idleWalkTimer > 0) {
+          a.idleWalkTimer -= delta;
+          if (a.idleWalkTimer <= 0) {
+            // Timer expired — pick a new target and switch to walking
+            a.wanderTargetX = (Math.random() - 0.5) * WANDER_RANGE * 2;
+            a.wanderTargetZ = (Math.random() - 0.5) * WANDER_RANGE * 2;
+            a.isIdleWalking = true;
+            void this.applyAnim(id, "walking");
+          }
+        }
+
+        if (a.isIdleWalking) {
+          const dx = a.wanderTargetX - a.wanderX;
+          const dz = a.wanderTargetZ - a.wanderZ;
+          const dist = Math.sqrt(dx * dx + dz * dz);
+
+          if (dist < ARRIVE_DIST) {
+            // Reached target — pause in idle pose for 2–5 seconds
+            a.isIdleWalking = false;
+            a.idleWalkTimer = 2 + Math.random() * 3;
+            void this.applyAnim(id, "idle");
+          } else {
+            const step = Math.min(WALK_SPEED * delta, dist);
+            a.wanderX += (dx / dist) * step;
+            a.wanderZ += (dz / dist) * step;
+            const targetRotY = Math.atan2(dx, dz);
+            a.wanderRotY += shortestAngle(a.wanderRotY, targetRotY) * 0.12;
+          }
+
+          if (a.animMesh) {
+            a.animMesh.position.set(a.wanderX, 0, a.wanderZ);
+            a.animMesh.rotation.set(0, a.wanderRotY, 0);
+          }
         }
       }
 
