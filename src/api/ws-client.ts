@@ -56,8 +56,8 @@ export class OfficeWsClient {
         method: "connect",
         params: {
           token: this.token,
-          userId: localStorage.getItem("goclaw:userId") ?? "default",
-          senderId: "",
+          user_id: localStorage.getItem("goclaw:userId") ?? "default",
+          sender_id: "",
         },
       };
       this.ws!.send(JSON.stringify(frame));
