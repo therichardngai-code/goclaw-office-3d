@@ -41,14 +41,25 @@ export async function fetchProviders(): Promise<Provider[]> {
   }
 }
 
-export async function fetchProviderModels(providerId: string): Promise<string[]> {
+export interface ProviderModel {
+  id: string;   // API identifier sent to goclaw (e.g. "MiniMax-M2.5")
+  name: string; // Display label shown in dropdown (e.g. "MiniMax M2.5")
+}
+
+export async function fetchProviderModels(providerId: string): Promise<ProviderModel[]> {
   try {
     const res = await fetch(apiURL(`/v1/providers/${providerId}/models`), {
       headers: getHeaders(),
     });
     if (!res.ok) return [];
     const data = await res.json();
-    return (data.models ?? []).map((m: { name: string }) => m.name);
+    // Return id (API identifier) + name (display label).
+    // Previously returned m.name which is a human-readable display string —
+    // goclaw's summoner requires the model id, not the display name.
+    return (data.models ?? []).map((m: { id: string; name: string }) => ({
+      id: m.id,
+      name: m.name ?? m.id,
+    }));
   } catch {
     return [];
   }

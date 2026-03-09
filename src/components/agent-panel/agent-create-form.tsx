@@ -5,6 +5,7 @@ import {
   fetchAllAgents,
   createAgent,
   type Provider,
+  type ProviderModel,
 } from "@/api/agent-api";
 import { useOfficeStore } from "@/stores/use-office-store";
 import type { AgentPreset } from "@/data/agent-presets";
@@ -31,7 +32,7 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
   const [provider, setProvider] = useState("");
   const [model, setModel] = useState("");
   const [providers, setProviders] = useState<Provider[]>([]);
-  const [models, setModels] = useState<string[]>([]);
+  const [models, setModels] = useState<ProviderModel[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const isPredefined = !!preset;
@@ -41,7 +42,7 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
   }, []);
 
   useEffect(() => {
-    const found = providers.find((p) => p.name === provider);
+    const found = providers.find((p) => p.id === provider);
     if (found) {
       fetchProviderModels(found.id).then(setModels);
     } else {
@@ -112,7 +113,7 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
           >
             <option value="">Select provider…</option>
             {providers.map((p) => (
-              <option key={p.id} value={p.name}>
+              <option key={p.id} value={p.id}>
                 {p.name}
               </option>
             ))}
@@ -136,8 +137,8 @@ export function AgentCreateForm({ preset, onSuccess, onCancel }: Props) {
           >
             <option value="">Select model…</option>
             {models.map((m) => (
-              <option key={m} value={m}>
-                {m}
+              <option key={m.id} value={m.id}>
+                {m.name}
               </option>
             ))}
           </select>
