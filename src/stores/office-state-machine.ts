@@ -242,12 +242,17 @@ export class OfficeStateMachine {
     };
     if (!p.delegation_id) return;
 
+    // Resolve agent keys → UUIDs so DelegationArcManager can look up charMgr positions.
+    // charMgr is keyed by UUID (from mergedSnapshot); delegation WS payload has agent_key strings.
+    const srcId = this.keyToId.get(p.source_agent_key ?? "") ?? p.source_agent_key ?? "";
+    const tgtId = this.keyToId.get(p.target_agent_key ?? "") ?? p.target_agent_key ?? "";
+
     this.delegations = [
       ...this.delegations.slice(-(MAX_DELEGATIONS - 1)),
       {
         id: p.delegation_id,
-        sourceId: p.source_agent_key ?? "",
-        targetId: p.target_agent_key ?? "",
+        sourceId: srcId,
+        targetId: tgtId,
         sourceDisplayName: p.source_display_name,
         targetDisplayName: p.target_display_name,
         task: p.task,
@@ -260,8 +265,6 @@ export class OfficeStateMachine {
     ];
 
     // Speech bubbles on both ends
-    const srcId = this.keyToId.get(p.source_agent_key ?? "") ?? p.source_agent_key ?? "";
-    const tgtId = this.keyToId.get(p.target_agent_key ?? "") ?? p.target_agent_key ?? "";
     if (srcId && this.agents[srcId]) {
       this.agents[srcId]!.speechBubble =
         `→ Briefing ${p.target_display_name ?? p.target_agent_key}...`;
