@@ -22,6 +22,8 @@ export class OfficeStateMachine {
   private agentLinks: OfficeAgentLink[] = [];
   // channel instance name (lowercase) → channel type (e.g. "my-telegram-bot" → "telegram")
   private channelTypeMap = new Map<string, string>();
+  // agent_key → canonical UUID (populated by seedAgents, used to route WS events)
+  private keyToId = new Map<string, string>();
   private tasks: Record<string, OfficeTask> = {};
   private notifications: Notification[] = [];
   private eventCount = 0;
@@ -57,8 +59,22 @@ export class OfficeStateMachine {
       agent.provider = a.provider;
       agent.agentType = a.agent_type;
       agent.displayName = a.display_name ?? a.agent_key;
-      // Re-derive character index now that we have the real agent_key
       agent.characterIndex = charIdx(a.agent_key);
+
+      // If WS events already fired using agent_key as agentId (before seed),
+      // migrate that live state into the canonical UUID entry, then remove it.
+      if (a.agent_key !== a.id && this.agents[a.agent_key]) {
+        const pre = this.agents[a.agent_key]!;
+        if (pre.state !== "idle") agent.state = pre.state;
+        if (pre.currentChannel) agent.currentChannel = pre.currentChannel;
+        if (pre.currentRunId)   agent.currentRunId   = pre.currentRunId;
+        if (pre.speechBubble)   agent.speechBubble   = pre.speechBubble;
+        if (pre.lastActiveAt > agent.lastActiveAt) agent.lastActiveAt = pre.lastActiveAt;
+        delete this.agents[a.agent_key];
+      }
+
+      // Register key → UUID so future WS events route to the canonical UUID entry
+      this.keyToId.set(a.agent_key, a.id);
     }
   }
 
@@ -102,8 +118,9 @@ export class OfficeStateMachine {
       payload?: unknown;
       channel?: string;
     };
-    const id = p.agentId;
-    if (!id) return;
+    if (!p.agentId) return;
+    // Resolve agent_key → canonical UUID (WS sends key string, not UUID)
+    const id = this.keyToId.get(p.agentId) ?? p.agentId;
 
     if (!this.agents[id]) {
       this.agents[id] = this.newAgent(id);
