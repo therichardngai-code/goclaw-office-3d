@@ -1,17 +1,19 @@
 # GoClaw Office 3D — Full Stack
 #
-# Starts three services in one command:
+# Starts four services in one command:
 #   1. postgres      — pgvector database
 #   2. goclaw        — AI gateway backend  (ghcr.io/nextlevelbuilder/goclaw:latest)
-#   3. web3d         — 3D office UI        (built from this repo)
+#   3. goclaw-ui     — web dashboard       (ghcr.io/nextlevelbuilder/goclaw-web:latest)
+#   4. web3d         — 3D office UI        (built from this repo)
 #
 # Quick start:
 #   cp .env.example .env      # fill in GOCLAW_GATEWAY_TOKEN and GOCLAW_ENCRYPTION_KEY
 #   docker compose up -d --build
 #
 # Access:
-#   3D Office UI  →  http://localhost:8080
-#   GoClaw API    →  http://localhost:18790   (optional direct access)
+#   3D Office UI    →  http://localhost:8080
+#   Web Dashboard   →  http://localhost:3000
+#   GoClaw API      →  http://localhost:18790   (optional direct access)
 
 services:
 
@@ -60,6 +62,18 @@ services:
       timeout: 5s
       start_period: 20s
       retries: 5
+    restart: unless-stopped
+
+  # ── GoClaw Web Dashboard ───────────────────────────────────────────────────
+  # Pre-built image — React SPA with nginx proxying /ws and /v1/* to goclaw.
+  # Same image published by docker-compose.selfservice.yml in the goclaw repo.
+  goclaw-ui:
+    image: ghcr.io/nextlevelbuilder/goclaw-web:latest
+    depends_on:
+      goclaw:
+        condition: service_healthy
+    ports:
+      - "${GOCLAW_UI_PORT:-3000}:80"
     restart: unless-stopped
 
   # ── GoClaw Office 3D (Web3D) ───────────────────────────────────────────────
