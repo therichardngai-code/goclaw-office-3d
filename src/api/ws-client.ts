@@ -147,8 +147,9 @@ export class OfficeWsClient {
   }
 
   // Make an RPC call and return the response payload.
-  // Rejects if the server returns an error or after 10s timeout.
-  call(method: string, params: unknown): Promise<unknown> {
+  // Rejects if the server returns an error or after timeoutMs (default 15s).
+  // Use a longer timeout for LLM-backed calls like chat.send (600s).
+  call(method: string, params: unknown, timeoutMs = 15_000): Promise<unknown> {
     return new Promise((resolve, reject) => {
       if (!this.ws || !this.connected) {
         reject(new Error("not connected"));
@@ -158,7 +159,7 @@ export class OfficeWsClient {
       const timeout = setTimeout(() => {
         this.pendingCalls.delete(id);
         reject(new Error("rpc timeout"));
-      }, 10_000);
+      }, timeoutMs);
       this.pendingCalls.set(id, { resolve, reject, timeout });
       this.ws.send(JSON.stringify({ type: "req", id, method, params }));
     });

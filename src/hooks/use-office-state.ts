@@ -29,8 +29,13 @@ export function useOfficeState(token: string): void {
     // Expose machine to store so seedAgents() is called when REST data arrives
     setMachine(machine);
 
-    // Expose WS call function so chat panel can call chat.send / chat.history
-    useOfficeStore.getState().setWsCall((method, params) => client.call(method, params ?? {}));
+    // Expose WS call function so chat panel can call chat.send / chat.history.
+    // chat.send triggers LLM inference — allow up to 600s (matches goclaw web).
+    // All other methods use 15s default.
+    const CHAT_SEND_TIMEOUT_MS = 600_000;
+    useOfficeStore.getState().setWsCall((method, params) =>
+      client.call(method, params ?? {}, method === "chat.send" ? CHAT_SEND_TIMEOUT_MS : undefined)
+    );
 
     // Trailing-edge debounce — coalesces bursts (tool chunks fire at 20-50 Hz)
     const flush = () => {
