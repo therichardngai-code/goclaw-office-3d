@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useOfficeStore } from "@/stores/use-office-store";
 import { RecruitTab } from "./recruit-tab";
 import { ConnectionTab } from "./connection-tab";
+import { TeamsTab } from "./teams-tab";
 
-type Tab = "recruit" | "connection";
+type Tab = "recruit" | "connection" | "teams";
 
 export function AgentPanel() {
   const agentPanelOpen = useOfficeStore((s) => s.agentPanelOpen);
@@ -51,7 +52,7 @@ export function AgentPanel() {
           <h2 className="text-white font-semibold text-base flex-1">Agent Office</h2>
 
           <div className="flex gap-1">
-            {(["recruit", "connection"] as Tab[]).map((t) => (
+            {(["recruit", "connection", "teams"] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -61,7 +62,7 @@ export function AgentPanel() {
                     : "text-gray-400 hover:text-white hover:bg-white/5"
                 }`}
               >
-                {t === "recruit" ? "Recruit" : "Connection"}
+                {t === "recruit" ? "Recruit" : t === "connection" ? "Connection" : "Teams"}
               </button>
             ))}
           </div>
@@ -78,8 +79,10 @@ export function AgentPanel() {
         <div className="flex-1 min-h-0">
           {tab === "recruit" ? (
             <RecruitTab onSuccess={handleSuccess} />
-          ) : (
+          ) : tab === "connection" ? (
             <ConnectionTab />
+          ) : (
+            <TeamsTab />
           )}
         </div>
       </div>
