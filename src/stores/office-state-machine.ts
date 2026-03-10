@@ -193,9 +193,6 @@ export class OfficeStateMachine {
           // AgentEvent.Channel = instance name (e.g. "my-telegram-bot"), not the type.
           const mapped = this.channelTypeMap.get(p.channel.toLowerCase());
           agent.currentChannel = mapped ?? normalizeChannelType(p.channel);
-          console.log("[sm] run.started", id, "raw channel:", p.channel, "→ resolved:", agent.currentChannel, "mapHit:", !!mapped);
-        } else {
-          console.log("[sm] run.started", id, "NO channel in payload");
         }
         this.addNotification("run.started", id, `${agent.displayName ?? id} started`);
         break;

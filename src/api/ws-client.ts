@@ -121,11 +121,6 @@ export class OfficeWsClient {
     }
 
     if (frame.type === "event" && frame.event) {
-      // [DEBUG] Log all events except high-frequency chunk/tool events
-      if (!["chunk", "tool.result"].includes(frame.event)) {
-        console.log("[ws] event:", frame.event, JSON.stringify(frame.payload));
-      }
-
       // Named handlers (used by state machine)
       this.namedHandlers.forEach((h) => h(frame.event!, frame.payload));
 

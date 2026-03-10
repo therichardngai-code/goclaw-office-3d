@@ -41,7 +41,6 @@ function buildMergedAgents(
     const byId = live[api.id];
     const byName = Object.values(live).find((a) => a.name === api.agent_key);
     const liveAgent = byId ?? byName;
-    console.log("[merge] agent", api.agent_key, api.id, "byId:", !!byId, "byName:", !!byName, "state:", liveAgent?.state, "channel:", liveAgent?.currentChannel);
     const ci = charIdx(api.agent_key);
     merged[api.id] = {
       id: api.id,
@@ -69,15 +68,10 @@ function buildMergedAgents(
   const mergedNames = new Set(Object.values(merged).map((a) => a.name));
   for (const [id, agent] of Object.entries(live)) {
     const skip = merged[id] ? "already-merged" : loserIds.has(id) ? "loser" : mergedNames.has(agent.name) ? "name-dup" : null;
-    if (skip) {
-      console.log("[merge] SSE skip", id, agent.name, "reason:", skip);
-    } else {
+    if (!skip) {
       merged[id] = { ...agent, characterIndex: charIdx(agent.name) };
-      console.log("[merge] SSE added", id, agent.name, "state:", agent.state, "channel:", agent.currentChannel);
     }
   }
-
-  console.log("[merge] final agents:", Object.entries(merged).map(([id, a]) => `${a.name}(${id.slice(0,8)}) state=${a.state} ch=${a.currentChannel}`));
   return merged;
 }
 
@@ -160,7 +154,6 @@ export const useOfficeStore = create<OfficeStore>((set, get) => ({
   },
   setMachine: (machine) => set({ machine }),
   setChannelInstances: (instances) => {
-    console.log("[store] seedChannels:", instances.map((i) => `${i.name}→${i.channel_type}`));
     const { machine } = get();
     if (machine) machine.seedChannels(instances);
   },
