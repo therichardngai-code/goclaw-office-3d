@@ -64,6 +64,29 @@ export class OfficeStateMachine {
     }
   }
 
+  // Seed teams from REST/RPC on connect — restores team platforms after page refresh.
+  // WS team.created/team.member.added events are not replayed on reconnect, so without
+  // this seed the state machine starts with teams={} and no team platforms are rendered.
+  // Skips teams already tracked by live WS events (idempotent).
+  seedTeamsFromList(
+    list: Array<{ id: string; name: string; lead_agent_key: string; lead_display_name?: string }>,
+    memberMap: Record<string, Array<{ agent_key?: string; display_name?: string; role?: string }>>
+  ): void {
+    for (const t of list) {
+      if (this.teams[t.id]) continue; // live WS state takes precedence
+      const members = (memberMap[t.id] ?? [])
+        .filter((m) => m.agent_key)
+        .map((m) => m.agent_key!);
+      this.teams[t.id] = {
+        id: t.id,
+        name: t.name,
+        leadId: t.lead_agent_key,
+        leadDisplayName: t.lead_display_name,
+        members,
+      };
+    }
+  }
+
   // Enrich state with REST /v1/agents data (display names, models, etc.)
   seedAgents(
     apiAgents: {

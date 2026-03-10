@@ -126,6 +126,35 @@ export function useOfficeState(token: string): void {
         setConnected(true);
         // Push initial snapshot immediately on connect
         setSnapshot(machine.snapshot());
+
+        // Seed teams from RPC — team.created/team.member.added are not replayed on
+        // reconnect so the state machine starts with teams={} after every refresh.
+        // Fetch list + per-team members and seed before the next snapshot push.
+        client.call("teams.list", {})
+          .then(async (res) => {
+            const r = res as { teams?: Array<{ id: string; name: string; lead_agent_key: string; lead_display_name?: string }> };
+            const teamList = r.teams ?? [];
+            if (teamList.length === 0) return;
+
+            // Fetch full member list for each team in parallel
+            const memberMap: Record<string, Array<{ agent_key?: string; display_name?: string; role?: string }>> = {};
+            await Promise.allSettled(
+              teamList.map(async (t) => {
+                try {
+                  const detail = await client.call("teams.get", { teamId: t.id }) as {
+                    members?: Array<{ agent_key?: string; display_name?: string; role?: string }>;
+                  };
+                  memberMap[t.id] = detail.members ?? [];
+                } catch {
+                  memberMap[t.id] = [];
+                }
+              })
+            );
+
+            machine.seedTeamsFromList(teamList, memberMap);
+            setSnapshot(machine.snapshot());
+          })
+          .catch(() => {});
       },
       () => setConnected(false)
     );
