@@ -133,7 +133,7 @@ export function AgentChatPanel() {
       message: userMsg.content,
       stream: true,
     }).catch((err: unknown) => {
-      setError(String(err));
+      setError(err instanceof Error ? err.message : String(err));
       setStreaming(false);
     });
   }, [agent, input, streaming, wsCall]);

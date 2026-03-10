@@ -8,6 +8,7 @@ interface WsFrame {
   event?: string;  // for event frames — Go EventFrame uses "event" field, not "name"
   ok?: boolean;    // for res frames
   payload?: unknown;
+  error?: { code?: string; message?: string }; // for res frames with ok=false (Go ErrorShape)
 }
 
 interface PendingCall {
@@ -104,7 +105,9 @@ export class OfficeWsClient {
       if (frame.ok) {
         pending.resolve(frame.payload);
       } else {
-        pending.reject(new Error(String(frame.payload ?? "rpc error")));
+        // Error is in frame.error per protocol (Go ErrorShape), not frame.payload
+        const msg = frame.error?.message ?? String(frame.payload ?? "rpc error");
+        pending.reject(new Error(msg));
       }
       return;
     }
