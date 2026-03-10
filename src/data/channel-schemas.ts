@@ -86,15 +86,24 @@ const blockReplyOptions = [
 ];
 
 // Config schema per channel — sent as POST /v1/channels/instances body.config
+const reactionLevelOptions = [
+  { value: "off",     label: "Off" },
+  { value: "minimal", label: "Minimal" },
+  { value: "full",    label: "Full" },
+];
+
 export const CHANNEL_CONFIG: Record<string, ConfigField[]> = {
   telegram: [
     { key: "dm_policy",       label: "DM Policy",                  type: "select",  options: dmPolicyOptions,    defaultValue: "pairing", help: "How to handle direct messages from unknown users" },
     { key: "group_policy",    label: "Group Policy",               type: "select",  options: groupPolicyOptions, defaultValue: "pairing" },
     { key: "require_mention", label: "Require @mention in groups", type: "boolean", defaultValue: true },
-    { key: "allow_from",      label: "Allowed Users",              type: "tags",    help: "Telegram user IDs or @usernames, one per line. Required when policy = allowlist." },
     { key: "history_limit",   label: "Group History Limit",        type: "number",  defaultValue: 50, help: "Max pending group messages for context (0 = disabled)" },
     { key: "dm_stream",       label: "DM Streaming",               type: "boolean", defaultValue: false, help: "Edit placeholder progressively as LLM generates" },
     { key: "group_stream",    label: "Group Streaming",            type: "boolean", defaultValue: false },
+    { key: "reaction_level",  label: "Reaction Level",             type: "select",  options: reactionLevelOptions, defaultValue: "full" },
+    { key: "media_max_bytes", label: "Max Media Size (bytes)",     type: "number",  defaultValue: 20971520, help: "Default: 20 MB" },
+    { key: "link_preview",    label: "Link Preview",               type: "boolean", defaultValue: true },
+    { key: "allow_from",      label: "Allowed Users",              type: "tags",    help: "Telegram user IDs or @usernames, one per line. Required when policy = allowlist." },
     { key: "block_reply",     label: "Block Reply",                type: "select",  options: blockReplyOptions, defaultValue: "inherit", help: "Deliver intermediate text during tool iterations" },
   ],
   discord: [

@@ -62,9 +62,11 @@ export function ChannelSetupForm({ agentId, agentKey, onSuccess }: Props) {
     const cleanCreds = Object.fromEntries(
       Object.entries(creds).filter(([, v]) => v.trim())
     );
-    // Strip undefined/empty from config before sending
+    // Strip undefined/empty/"inherit" from config before sending.
+    // "inherit" means "use gateway default" = omit the field entirely (Go reads as nil).
+    // "true"/"false" strings are handled server-side by coerceStringBools.
     const cleanConfig = Object.fromEntries(
-      Object.entries(config).filter(([, v]) => v !== undefined && v !== null && v !== "")
+      Object.entries(config).filter(([, v]) => v !== undefined && v !== null && v !== "" && v !== "inherit")
     );
 
     const result = await createChannelInstance({
